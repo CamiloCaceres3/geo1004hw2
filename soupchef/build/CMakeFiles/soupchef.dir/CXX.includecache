@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/ccaceres3/hw02geo1004/hw2/soupchef/DCEL.hpp
+DCELElements.hpp
+/home/ccaceres3/hw02geo1004/hw2/soupchef/DCELElements.hpp
+
+/home/ccaceres3/hw02geo1004/hw2/soupchef/DCELElements.hpp
+memory
+-
+
+/home/ccaceres3/hw02geo1004/hw2/soupchef/main.cpp
+iostream
+-
+list
+-
+DCEL.hpp
+/home/ccaceres3/hw02geo1004/hw2/soupchef/DCEL.hpp
+

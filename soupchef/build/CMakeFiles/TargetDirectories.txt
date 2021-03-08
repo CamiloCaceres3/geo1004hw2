@@ -1,3 +1,0 @@
-/home/ccaceres3/hw02geo1004/hw2/soupchef/build/CMakeFiles/rebuild_cache.dir
-/home/ccaceres3/hw02geo1004/hw2/soupchef/build/CMakeFiles/edit_cache.dir
-/home/ccaceres3/hw02geo1004/hw2/soupchef/build/CMakeFiles/soupchef.dir

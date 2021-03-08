@@ -121,7 +121,7 @@ void DemoDCEL() {
     1 face
 
   */
-  std::cout << "\n/// STEP 2 Adding triangle vertices...\n";
+  std::cout << "\n/// STEP 2 Adding triangle vertices...LARS\n";
   Vertex* v0 = D.createVertex(0,0,0);
   Vertex* v1 = D.createVertex(1,0,0);
   Vertex* v2 = D.createVertex(0,1,0);

@@ -1,5 +1,12 @@
 #include <iostream>
 #include <list>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <string>
+
+#include <unordered_map>
+
 #include "DCEL.hpp"
 
 // forward declarations; these functions are given below main()
@@ -14,7 +21,115 @@ void printDCEL(DCEL & D);
 */
 // 1.
 void importOBJ(DCEL & D, const char *file_in) {
-  // to do
+  std::string  input =  file_in;
+  input = "../../" + input;
+  std::cout << "Reading file: " << input << std::endl;
+  std::ifstream infile(input.c_str(), std::ifstream::in);
+  if (!infile)
+  {
+    std::cerr << "Input file not found.\n";
+  }
+  std::string cursor;
+  std::string line = "";
+  std::unordered_map<int, Vertex*> umap;
+  std::unordered_map< HalfEdge*, std::vector<int> > hemap;
+  int id_vertex =1;
+  int afaces = 0;
+  int a = 0;
+  while (  std::getline(infile, line))
+  {
+    std::istringstream linestream(line);
+    linestream >> cursor;
+    double x,y,z;
+    int h,j,k;
+    if(cursor == "v")
+    {
+      for(int i = 0; i < 3; i++)
+      {
+        linestream >> cursor;
+        if(i == 0)
+        {
+          x = std::stod(cursor);
+        }
+        else if(i==1)
+        {
+          y = std::stod(cursor);
+        }
+        else if( i ==2)
+        {
+          z = std:: stod(cursor);
+        }
+      }
+      // for each v one vertex
+      Vertex* v0 = D.createVertex(x,y,z);
+      umap.insert({id_vertex, v0});
+      id_vertex  ++;
+    }
+    else if(cursor =="f")
+    {
+      for(int i = 0; i < 3; i++)
+      {
+        linestream >> cursor;
+        if(i == 0)
+        {
+          h = std::stoi(cursor);
+        }
+        else if(i==1)
+        {
+          j = std::stoi(cursor);
+        }
+        else if( i ==2)
+        {
+          k = std::stoi(cursor);
+        }
+      }
+      HalfEdge* e0 = D.createHalfEdge();
+      HalfEdge* e1 = D.createHalfEdge();
+      HalfEdge* e2 = D.createHalfEdge();
+      
+      Face* f0 = D.createFace();
+      f0->exteriorEdge = e0;
+
+      e0->origin = umap[h];
+      e0->destination = umap[j];
+      e0->next = e1;
+      e0->prev = e2;
+      e0->incidentFace = f0;
+      std::vector<int> v {h,j};
+      hemap.insert({e0,v});
+
+      e1->origin = umap[j];
+      e1->destination = umap[k];
+      e1->next = e2;
+      e1->prev = e0;
+      e1->incidentFace = f0;
+      std::vector<int> v1 {j,k};
+      hemap.insert({ e1, v1});
+
+      e2->origin = umap[k];
+      e2->destination = umap[h];
+      e2->next = e0;
+      e2->prev = e1;
+      e2->incidentFace = f0;
+      std::vector<int> v2 {k,h};
+      hemap.insert({ e2, v2});
+    } 
+  a++;
+  //for each f 6 edges and for now 1 face (interior)
+  }
+  for(auto ed: hemap)
+  {
+    for(auto ed1: hemap)
+      if((ed.second[0] == ed1.second[1] && ed.second[1] == ed1.second[0]) || (ed.second[0] == ed1.second[0] && ed.second[1] == ed1.second[1])  )
+      {
+        ed.first->twin = ed1.first;
+        ed1.first-> twin = ed.first;
+      }
+  }
+
+
+  printDCEL(D);
+
 }
 // 2.
 void groupTriangles(DCEL & D) {
@@ -30,23 +145,31 @@ void mergeCoPlanarFaces(DCEL & D) {
 }
 // 5.
 void exportCityJSON(DCEL & D, const char *file_out) {
-  // to do
+
+  std::ofstream myfile;
+  std:: string  output = file_out;
+  output = "../../" + output;
+  myfile.open(output);
+  std::cout << "Writing file: " << file_out << std::endl;
+  myfile << "v" << 5 << " " << 6 << " " << 7;
+  myfile.close();
+  std::cout << "FINISHED Writing file: " << file_out << std::endl;
 }
 
 
 int main(int argc, const char * argv[]) {
-  const char *file_in = "bk_soup.obj";
+  const char *file_in = "cube_soup.obj";
   const char *file_out = "bk.json";
 
   // Demonstrate how to use the DCEL to get you started (see function implementation below)
   // you can remove this from the final code
-  DemoDCEL();
+  //DemoDCEL();
 
   // create an empty DCEL
   DCEL D;
 
   // 1. read the triangle soup from the OBJ input file and convert it to the DCEL,
-  
+  importOBJ(D, file_in);
   // 2. group the triangles into meshes,
   
   // 3. determine the correct orientation for each mesh and ensure all its triangles 
@@ -121,7 +244,7 @@ void DemoDCEL() {
     1 face
 
   */
-  std::cout << "\n/// STEP 2 Adding triangle vertices...LARS\n";
+  std::cout << "\n/// STEP 2 Adding triangle vertices...\n";
   Vertex* v0 = D.createVertex(0,0,0);
   Vertex* v1 = D.createVertex(1,0,0);
   Vertex* v2 = D.createVertex(0,1,0);

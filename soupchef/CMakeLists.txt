@@ -1,3 +1,4 @@
+  
 cmake_minimum_required(VERSION 3.16)
 project(geo1004.soupchef)
 
@@ -9,5 +10,4 @@ set_target_properties(soupchef PROPERTIES
 )
 
 # Make the executable a default target to build & run in Visual Studio
-set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT soupchef)
-
+set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ../soupchef)

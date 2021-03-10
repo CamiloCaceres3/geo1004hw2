@@ -61,7 +61,7 @@ class DCELElement {
   Helper function for printing the Element to an output stream
 */
 std::ostream& operator<<(std::ostream& os, const DCELElement& f) {
-  f.toStream(os) << " at " << &f;
+  f.toStream(os); //<< " at " << &f;
   
   if ( f.isEliminated() ) {
     os << " [was eliminated]";
@@ -88,7 +88,7 @@ struct Vertex : DCELElement {
   bool hasDanglingLink() const override;
 
   std::ostream& toStream(std::ostream& os) const override {
-    os << "Vertex(" << x << ", " << y << ", " << z << ")";
+    os << "[" << x << ", " << y << ", " << z << "]";
     return os;
   };
 

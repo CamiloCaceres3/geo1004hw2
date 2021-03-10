@@ -20,7 +20,7 @@ void printDCEL(DCEL & D);
   After each function you should have a DCEL without invalid elements!
 */
 // 1.
-void importOBJ(DCEL & D, const char *file_in) {
+void importOBJ(DCEL & D, const char *file_in ,   std::unordered_map< HalfEdge*, std::vector<int> > &hemap, std::unordered_map<int, Vertex*> &umap) {
   std::string  input =  file_in;
   input = "../../" + input;
   std::cout << "Reading file: " << input << std::endl;
@@ -31,8 +31,6 @@ void importOBJ(DCEL & D, const char *file_in) {
   }
   std::string cursor;
   std::string line = "";
-  std::unordered_map<int, Vertex*> umap;
-  std::unordered_map< HalfEdge*, std::vector<int> > hemap;
   int id_vertex =1;
   int afaces = 0;
   int a = 0;
@@ -120,12 +118,17 @@ void importOBJ(DCEL & D, const char *file_in) {
   for(auto ed: hemap)
   {
     for(auto ed1: hemap)
-      if((ed.second[0] == ed1.second[1] && ed.second[1] == ed1.second[0]) || (ed.second[0] == ed1.second[0] && ed.second[1] == ed1.second[1])  )
+      if((ed.second[0] == ed1.second[1] && ed.second[1] == ed1.second[0]) || (ed.second[0] == ed1.second[0] && ed.second[1] == ed1.second[1] && ed.first != ed1.first)  )
       {
         ed.first->twin = ed1.first;
         ed1.first-> twin = ed.first;
+        //hemap.erase(ed.first);
+        //hemap.erase(ed1.first);
       }
   }
+  auto it = hemap.begin()->first;
+  D.infiniteFace()->holes.push_back(it);
+  std::cout << "hemap.size() is " << hemap.size() << "umap.size() is " << umap.size() <<std::endl;
 
 
   printDCEL(D);
@@ -134,6 +137,7 @@ void importOBJ(DCEL & D, const char *file_in) {
 // 2.
 void groupTriangles(DCEL & D) {
   // to do
+
 }
 // 3.
 void orientMeshes(DCEL & D) {
@@ -144,21 +148,81 @@ void mergeCoPlanarFaces(DCEL & D) {
   // to do
 }
 // 5.
-void exportCityJSON(DCEL & D, const char *file_out) {
+void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge*, std::vector<int> > &hemap, std::unordered_map<int, Vertex*> &umap) {
 
   std::ofstream myfile;
   std:: string  output = file_out;
   output = "../../" + output;
   myfile.open(output);
-  std::cout << "Writing file: " << file_out << std::endl;
-  myfile << "v" << 5 << " " << 6 << " " << 7;
+  std::cout << "Writing file:" << file_out << std::endl;
+  myfile << "{";
+  //init
+  myfile <<"\"type\":\"CityJSON\",\"version\":\"1.0\",";
+  //city objects
+  myfile << "\"CityObjects\":{";
+  int building = 1;
+  for( const auto & e : D.infiniteFace()->holes)
+  {
+    myfile << "\"Building_" << building << "\":{";
+    myfile << "\"geometry\":[{";
+    myfile << "\"boundaries\":[";
+    int last_f = 0 ;
+    for( const auto & f : D.faces())
+    {
+      myfile << "[[";
+      HalfEdge* e = f->exteriorEdge;
+      const HalfEdge* e_start = e;
+      int last = 0;
+      do {
+        int index;
+        for( auto ver : umap)
+        {
+          if(ver.second == e->origin)
+          {
+            index = ver.first-1;
+          }
+        }
+        if (last <2) myfile << index << ",";
+        else  myfile << index;
+        last++;
+        e = e->next;
+      } while ( e_start!=e) ; 
+      if(last_f == D.faces().size()-1) myfile << "]]";
+      else myfile << "]],";
+      last_f ++;
+    }
+    //close boundaries
+    myfile << "],";
+    myfile << "\"lod\":2,\"type\":\"MultiSurface\"";
+    //close geometry
+    myfile   << "}],";
+    myfile << "\"type\": \"Building\"";
+    // close building
+    myfile  << "}";
+    building  ++;
+  }
+  //close cityObjects
+  myfile << "}, ";
+  //vertices
+  myfile << "\"vertices\":[";
+  for (int i = 1; i < umap.size()+1; i++ ) {
+  auto  v = umap[i];
+  if(i == umap.size()){
+    myfile   << *v ;
+  }
+  else myfile   << *v <<",";
+  }
+  // close vertices
+  myfile << "]";
+  //close json
+  myfile << "}";
   myfile.close();
   std::cout << "FINISHED Writing file: " << file_out << std::endl;
 }
 
 
 int main(int argc, const char * argv[]) {
-  const char *file_in = "cube_soup.obj";
+  const char *file_in = "cube.obj";
   const char *file_out = "bk.json";
 
   // Demonstrate how to use the DCEL to get you started (see function implementation below)
@@ -167,9 +231,13 @@ int main(int argc, const char * argv[]) {
 
   // create an empty DCEL
   DCEL D;
+  //create an unordered map 
+  std::unordered_map< HalfEdge*, std::vector<int> > hemap;
+  std::unordered_map<int, Vertex*> umap;
+  //  create unrdered map
 
   // 1. read the triangle soup from the OBJ input file and convert it to the DCEL,
-  importOBJ(D, file_in);
+  importOBJ(D, file_in,  hemap, umap);
   // 2. group the triangles into meshes,
   
   // 3. determine the correct orientation for each mesh and ensure all its triangles 
@@ -179,7 +247,7 @@ int main(int argc, const char * argv[]) {
   // 4. merge adjacent triangles that are co-planar into larger polygonal faces.
   
   // 5. write the meshes with their faces to a valid CityJSON output file.
-
+  exportCityJSON(D, file_out, hemap, umap);
   return 0;
 }
 

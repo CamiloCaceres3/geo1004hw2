@@ -136,7 +136,7 @@ void importOBJ(DCEL & D, const char *file_in ,   std::unordered_map< HalfEdge*, 
 
 }
 // 2.
-void groupTriangles(DCEL & D, std::unordered_map< HalfEdge*, std::vector<int> > &hemap) {
+void groupTriangles(DCEL & D, std::unordered_map< HalfEdge*, std::vector<int> > &hemap,  std::unordered_map< Face*, int> &facemap) {
   // to do
   //std::vector<int> meshes;
   std::unordered_map< HalfEdge*, int> meshmap;
@@ -144,6 +144,7 @@ void groupTriangles(DCEL & D, std::unordered_map< HalfEdge*, std::vector<int> > 
   {
     meshmap.insert({e.first,0});
   }
+  int build = 1;
   bool list_em = false;
   while(list_em == false)
   {
@@ -165,7 +166,8 @@ void groupTriangles(DCEL & D, std::unordered_map< HalfEdge*, std::vector<int> > 
       HalfEdge* e = s.top();
       std::cout << &e << std::endl;
       s.pop();
-        HalfEdge* e_start = e;
+      facemap[e->incidentFace] = build;
+      HalfEdge* e_start = e;
         do {
             meshmap[e] = 1;
             if(meshmap[e->twin] == 0)
@@ -175,6 +177,7 @@ void groupTriangles(DCEL & D, std::unordered_map< HalfEdge*, std::vector<int> > 
             e = e->next;
           } while ( e_start!=e) ; 
     }
+    build ++;
     int ir =0;
     for(auto c: meshmap)
     {
@@ -202,7 +205,21 @@ void mergeCoPlanarFaces(DCEL & D) {
   // to do
 }
 // 5.
-void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge*, std::vector<int> > &hemap, std::unordered_map<int, Vertex*> &umap) {
+int faces_in_mesh(std::unordered_map< Face*, int> &facemap, int i)
+{
+  int res = 0;
+  for (auto & f : facemap )
+  {
+    if(f.second == i)
+    {
+      res ++;
+    }
+  }
+  return res;
+}
+
+void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge*, std::vector<int> > &hemap, std::unordered_map<int, Vertex*> &umap,
+  std::unordered_map< Face*, int> &facemap) {
 
   std::ofstream myfile;
   std:: string  output = file_out;
@@ -221,29 +238,33 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
     myfile << "\"geometry\":[{";
     myfile << "\"boundaries\":[";
     int last_f = 0 ;
-    for( const auto & f : D.faces())
+    for( auto & f : facemap)
     {
-      myfile << "[[";
-      HalfEdge* e = f->exteriorEdge;
-      const HalfEdge* e_start = e;
-      int last = 0;
-      do {
-        int index;
-        for( auto ver : umap)
-        {
-          if(ver.second == e->origin)
+      if(facemap[f.first] == building)
+      {
+        myfile << "[[";
+        HalfEdge* e = f.first->exteriorEdge;
+        const HalfEdge* e_start = e;
+        int last = 0;
+        do {
+          int index;
+          for( auto ver : umap)
           {
-            index = ver.first-1;
+            if(ver.second == e->origin)
+            {
+              index = ver.first-1;
+            }
           }
-        }
-        if (last <2) myfile << index << ",";
-        else  myfile << index;
-        last++;
-        e = e->next;
-      } while ( e_start!=e) ; 
-      if(last_f == D.faces().size()-1) myfile << "]]";
-      else myfile << "]],";
-      last_f ++;
+          if (last <2) myfile << index << ",";
+          else  myfile << index;
+          last++;
+          e = e->next;
+        } while ( e_start!=e) ; 
+        last_f ++;
+        myfile << "]]";
+        if(faces_in_mesh(facemap , building ) >  last_f) myfile << ",";
+      }
+
     }
     //close boundaries
     myfile << "],";
@@ -277,7 +298,7 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
 
 
 int main(int argc, const char * argv[]) {
-  const char *file_in = "isolated_cubes.obj";
+  const char *file_in = "bk_soup.obj";
   const char *file_out = "bk.json";
 
   // Demonstrate how to use the DCEL to get you started (see function implementation below)
@@ -294,7 +315,12 @@ int main(int argc, const char * argv[]) {
   // 1. read the triangle soup from the OBJ input file and convert it to the DCEL,
   importOBJ(D, file_in,  hemap, umap);
   // 2. group the triangles into meshes,
-   groupTriangles(D, hemap);
+  std::unordered_map< Face*, int> facemap;
+  for( auto & f : facemap)
+  {
+    facemap.insert({f.first,0});
+  }
+   groupTriangles(D, hemap, facemap);
   // 3. determine the correct orientation for each mesh and ensure all its triangles 
   //    are consistent with this correct orientation (ie. all the triangle normals 
   //    are pointing outwards).
@@ -302,7 +328,7 @@ int main(int argc, const char * argv[]) {
   // 4. merge adjacent triangles that are co-planar into larger polygonal faces.
   
   // 5. write the meshes with their faces to a valid CityJSON output file.
-  exportCityJSON(D, file_out, hemap, umap);
+  exportCityJSON(D, file_out, hemap, umap, facemap);
   return 0;
 }
 

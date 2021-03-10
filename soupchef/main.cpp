@@ -4,6 +4,7 @@
 #include <sstream>
 #include <vector>
 #include <string>
+#include <stack>
 
 #include <unordered_map>
 
@@ -118,7 +119,7 @@ void importOBJ(DCEL & D, const char *file_in ,   std::unordered_map< HalfEdge*, 
   for(auto ed: hemap)
   {
     for(auto ed1: hemap)
-      if((ed.second[0] == ed1.second[1] && ed.second[1] == ed1.second[0]) || (ed.second[0] == ed1.second[0] && ed.second[1] == ed1.second[1] && ed.first != ed1.first)  )
+      if((ed.second[0] == ed1.second[1] && ed.second[1] == ed1.second[0]&& ed.first != ed1.first) || (ed.second[0] == ed1.second[0] && ed.second[1] == ed1.second[1] && ed.first != ed1.first)  )
       {
         ed.first->twin = ed1.first;
         ed1.first-> twin = ed.first;
@@ -126,8 +127,8 @@ void importOBJ(DCEL & D, const char *file_in ,   std::unordered_map< HalfEdge*, 
         //hemap.erase(ed1.first);
       }
   }
-  auto it = hemap.begin()->first;
-  D.infiniteFace()->holes.push_back(it);
+  // auto it = hemap.begin()->first;
+  //D.infiniteFace()->holes.push_back(it);
   std::cout << "hemap.size() is " << hemap.size() << "umap.size() is " << umap.size() <<std::endl;
 
 
@@ -135,8 +136,61 @@ void importOBJ(DCEL & D, const char *file_in ,   std::unordered_map< HalfEdge*, 
 
 }
 // 2.
-void groupTriangles(DCEL & D) {
+void groupTriangles(DCEL & D, std::unordered_map< HalfEdge*, std::vector<int> > &hemap) {
   // to do
+  //std::vector<int> meshes;
+  std::unordered_map< HalfEdge*, int> meshmap;
+  for( auto & e : hemap)
+  {
+    meshmap.insert({e.first,0});
+  }
+  bool list_em = false;
+  while(list_em == false)
+  {
+    HalfEdge* c;
+    std::unordered_map<HalfEdge*, int>::iterator it = meshmap.begin();
+    while (it != meshmap.end()) {
+        if (it->second == 0) {
+            c = it->first;
+            it == meshmap.end();
+        } 
+        it++;
+    }
+
+    std::stack<HalfEdge*> s;
+    s.push(c);
+    D.infiniteFace()->holes.push_back(c);
+    while(!s.empty())
+    {
+      HalfEdge* e = s.top();
+      std::cout << &e << std::endl;
+      s.pop();
+        HalfEdge* e_start = e;
+        do {
+            meshmap[e] = 1;
+            if(meshmap[e->twin] == 0)
+              {
+                s.push(e->twin);
+              }
+            e = e->next;
+          } while ( e_start!=e) ; 
+    }
+    int ir =0;
+    for(auto c: meshmap)
+    {
+      if(c.second ==0)
+      {
+        ir ++;
+      }
+    }
+    if(ir == 0)
+    {
+      list_em = true;
+    }
+  }
+
+std:: cout << D.infiniteFace()->holes.size() << std::endl;
+
 
 }
 // 3.
@@ -199,7 +253,8 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
     myfile << "\"type\": \"Building\"";
     // close building
     myfile  << "}";
-    building  ++;
+    if(building < D.infiniteFace()->holes.size()) myfile << "," ;
+    building ++;
   }
   //close cityObjects
   myfile << "}, ";
@@ -222,7 +277,7 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
 
 
 int main(int argc, const char * argv[]) {
-  const char *file_in = "cube.obj";
+  const char *file_in = "isolated_cubes.obj";
   const char *file_out = "bk.json";
 
   // Demonstrate how to use the DCEL to get you started (see function implementation below)
@@ -239,7 +294,7 @@ int main(int argc, const char * argv[]) {
   // 1. read the triangle soup from the OBJ input file and convert it to the DCEL,
   importOBJ(D, file_in,  hemap, umap);
   // 2. group the triangles into meshes,
-  
+   groupTriangles(D, hemap);
   // 3. determine the correct orientation for each mesh and ensure all its triangles 
   //    are consistent with this correct orientation (ie. all the triangle normals 
   //    are pointing outwards).

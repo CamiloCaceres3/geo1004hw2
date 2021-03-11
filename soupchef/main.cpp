@@ -132,7 +132,7 @@ void importOBJ(DCEL & D, const char *file_in ,   std::unordered_map< HalfEdge*, 
   std::cout << "hemap.size() is " << hemap.size() << "umap.size() is " << umap.size() <<std::endl;
 
 
-  printDCEL(D);
+  //printDCEL(D);
 
 }
 // 2.
@@ -164,7 +164,7 @@ void groupTriangles(DCEL & D, std::unordered_map< HalfEdge*, std::vector<int> > 
     while(!s.empty())
     {
       HalfEdge* e = s.top();
-      std::cout << &e << std::endl;
+      //std::cout << &e << std::endl;
       s.pop();
       facemap[e->incidentFace] = build;
       HalfEdge* e_start = e;
@@ -201,8 +201,86 @@ void orientMeshes(DCEL & D) {
   // to do
 }
 // 4.
-void mergeCoPlanarFaces(DCEL & D) {
+std::vector<double> cross(std::vector<double> V1, std::vector<double> V2)
+{
+
+  std::vector<double> v;
+  v.push_back(V1[1] * V2[2] - V1[2] * V2[1]);
+  v.push_back(-(V1[0] * V2[2] - V1[2] * V2[0]));
+  v.push_back(V1[0] * V2[1] - V1[1] * V2[0]);
+  return v;  
+}
+
+double dot(std::vector<double> V1, std::vector<double> V2)
+{
+  double d = 0.0;
+  for (int i = 0; i < V1.size(); i++)
+  {
+    d = d + (V1[i] * V2[i]);
+  }
+  return d;
+}
+
+bool coplanar(Vertex* &v1, Vertex* &v2, Vertex* &v3, Vertex* &v4)
+{
+  std::vector<double> V1 {v2->x - v1->x, v2->y - v1->y , v2->z -v1->z };
+  std::vector<double> V2 {v4->x - v1->x, v4->y - v1->y , v4->z -v1->z };
+  std::vector<double> V3 {v3->x - v1->x, v3->y - v1->y , v3->z -v1->z };
+
+  std::vector<double> v  = cross(V1, V2);
+  double d =  dot(v, V3);
+
+  if(abs(d) < 0.01)
+  {
+    return true;
+  }
+  else return false;
+}
+
+
+void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap) {
   // to do
+  for(  auto hedge: D.infiniteFace()->holes)
+  {
+    HalfEdge* e = hedge;
+    HalfEdge* te = e->twin;
+    HalfEdge* n = e->next;
+    HalfEdge* tn = te->next;
+    HalfEdge* p = e->prev;    
+    HalfEdge* tp = te->prev;
+    Vertex* v1 = e->origin;
+    Vertex* v2 = e->destination;
+    Vertex* v3 = n->destination;
+    Vertex* v4 = tn -> destination;
+    Face* f = e->incidentFace;
+
+    //check if the are coplanar
+    bool cop = coplanar(v1,v2,v3,v4);
+    std::cout << cop << *v1 << *v2 << *v3 << *v4 <<std::endl;
+
+    if(cop == true )
+    {
+      //if(e == hedge ) D.infiniteFace()->holes.push_back(n);
+      te->incidentFace->eliminate();
+      e -> eliminate();
+      te -> eliminate ();
+      facemap.erase(te->incidentFace);
+
+      n->prev = tp;
+      p->next = tn;
+      tn->prev = p;
+      tp->next = n;
+      tn->incidentFace = f;
+      tp->incidentFace = f;
+      f->exteriorEdge = n;
+    }
+
+    DCELElement* I  = D.findInValid();
+    //Vertex* vv = HalfEdge I->destination;
+    std::cout <<  *e << *te << *n << *p << *tn << *tp <<std::endl;
+    printDCEL(D);
+    D.cleanup();
+  }
 }
 // 5.
 int faces_in_mesh(std::unordered_map< Face*, int> &facemap, int i)
@@ -217,6 +295,7 @@ int faces_in_mesh(std::unordered_map< Face*, int> &facemap, int i)
   }
   return res;
 }
+
 
 void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge*, std::vector<int> > &hemap, std::unordered_map<int, Vertex*> &umap,
   std::unordered_map< Face*, int> &facemap) {
@@ -255,7 +334,7 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
               index = ver.first-1;
             }
           }
-          if (last <2) myfile << index << ",";
+          if (e_start!=e->next) myfile << index << ",";
           else  myfile << index;
           last++;
           e = e->next;
@@ -298,7 +377,7 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
 
 
 int main(int argc, const char * argv[]) {
-  const char *file_in = "bk_soup.obj";
+  const char *file_in = "polygonal_hole.obj";
   const char *file_out = "bk.json";
 
   // Demonstrate how to use the DCEL to get you started (see function implementation below)
@@ -326,7 +405,7 @@ int main(int argc, const char * argv[]) {
   //    are pointing outwards).
   
   // 4. merge adjacent triangles that are co-planar into larger polygonal faces.
-  
+  mergeCoPlanarFaces( D,facemap);
   // 5. write the meshes with their faces to a valid CityJSON output file.
   exportCityJSON(D, file_out, hemap, umap, facemap);
   return 0;

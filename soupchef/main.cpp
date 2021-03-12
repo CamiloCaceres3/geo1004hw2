@@ -196,9 +196,92 @@ std:: cout << D.infiniteFace()->holes.size() << std::endl;
 
 
 }
+std::vector<double> getNormalVec(Vertex* &v1, Vertex* &v2, Vertex* &v3){
+  //(v2-v1)X(v3-v1)
+  std::vector<double> v12 {v1->x - v2->x, v1->y - v2->y, v1->z - v2->z};
+  std::vector<double> v13 {v1->x - v3->x, v1->y - v3->y, v1->z - v3->z};
+  return cross(v12,v13);
+}
+std::vector<double> getPlaneCenter(Vertex* &v1, Vertex* &v2, Vertex* &v3){
+  std::vector<double> vc {(v1->x + v2->x + v3->x)/3, (v1->y + v2->y + v3->y)/3, (v1->z + v2->z + v3->z)/3};
+  return vc;
+}
+/*
+double signedVolume(Vertex* &v1, Vertex* &v2, Vertex* &v3, std::vector<double> a){
+  std::vector<double> v1a {v1.x - a[0], v1.y - a[1], v1.z - a[2]};
+  std::vector<double> v2a {v2.x - a[0], v2.y - a[1], v2.z - a[2]};
+  std::vector<double> v3a {v3.x - a[0], v3.y - a[1], v3.z - a[2]};
+  std::vector<double> v2av3a = cross(v2a, v3a);
+  double dotv1v2v3a = dot(v1a, v2av3a);
+  double res = dotv1v2v3a/6;
+  return res;
+}*/
+std::vector<double> vertToVec(Vertex* &v1){
+  std::vector<double> vec1{v1->x,v1->y,v1->z};
+}
+double signedVolume(std::vector<double> v1, std::vector<double> v2, std::vector<double> v3, std::vector<double> v4){
+  std::vector<double> v1v4 {v1[0] - v4[0], v1[1] - v4[1], v1[2] - v4[2]};
+  std::vector<double> v2v4 {v2[0] - v4[0], v2[1] - v4[1], v2[2] - v4[2]};
+  std::vector<double> v3v4 {v3.x - v4[0], v3[1] - v4[1], v3[2] - v4[2]};
+  std::vector<double> v2v4v3v4 = cross(v2v4, v3v4);
+  double dotv1v2v3v4 = dot(v1v4, v2v4v3v4);
+  double res = dotv1v2v3v4/6
+  return res;
+}
+
+
+bool intersectCheck(Vertex* &v1, Vertex* &v2, Vertex* &v3, std::vector<double> origin, std::vector<double> destination){
+  std::vector<double> vec1 = vertToVec(v1);
+  std::vector<double> vec2 = vertToVec(v2);
+  std::vector<double> vec3 = vertToVec(v3);
+
+  //1
+  double vOrigin = signedVolume(vec1, vec2, vec3, origin);
+  double vDest = signedVolume(vec1, vec2, vec3, destination);
+  bool check1 = false;
+  if ( vOrigin * vDest <= 0){
+    check1 = true;
+  }
+  //2
+  double v12 = signedVolume(origin, destination, vec1, vec2);
+  double v13 = signedVolume(origin, destination, vec1, vec3);
+  bool check2 = false;
+  if ( v12 * v13 <= 0){
+    check2 = true;
+  }
+//3
+  double v21 = signedVolume(origin, destination, vec2, vec1);
+  double v23 = signedVolume(origin, destination, vec2, vec3);
+  bool check3 = false;
+  if ( v21 * v23 <= 0){
+    check3 = true;
+  }
+  //4
+  double v31 = signedVolume(origin, destination, vec3, vec1);
+  double v32 = signedVolume(origin, destination, vec3, vec2);
+  bool check3 = false;
+  if ( v31 * v32 <= 0){
+    check3 = true;
+  }
+  if (check1 && check2 && check3 && check4){
+    return true;
+  }
+  else{
+    return false;
+  };
+}
+
+
 // 3.
 void orientMeshes(DCEL & D) {
-  // to do
+    // to do
+
+  for ( const auto & f : D.faces() ) {
+    f->v
+
+
+}
+
 }
 // 4.
 std::vector<double> cross(std::vector<double> V1, std::vector<double> V2)

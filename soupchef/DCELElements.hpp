@@ -129,7 +129,7 @@ struct HalfEdge : DCELElement {
   bool hasDanglingLink() const override;
 
   std::ostream& toStream(std::ostream& os) const override {
-    os << "HalfEdge";
+    os << "HalfEdge" ;
     return os;
   };
 

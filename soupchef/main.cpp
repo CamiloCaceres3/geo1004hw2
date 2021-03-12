@@ -237,6 +237,18 @@ bool coplanar(Vertex* &v1, Vertex* &v2, Vertex* &v3, Vertex* &v4)
   else return false;
 }
 
+bool length_greater(HalfEdge* e1, HalfEdge* v2)
+{
+  auto v1 = e1->origin;
+  auto v2 = e1->destination;
+  auto v3 = e2->origin; 
+  auto v4 = e2->destination; 
+  double d1 = pow(v1->x - v2->x ,2) + pow(v1->y - v2->y ,2) + pow(v1->y - v2->y ,2);
+  double d2 = pow(v3->x - v4->x ,2) + pow(v3->y - v4->y ,2) + pow(v3->y - v4->y ,2);
+  if( d1 > d2) return true;
+  else return false;
+}
+
 
 void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap) {
   // to do
@@ -253,6 +265,7 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap) {
     Vertex* v3 = n->destination;
     Vertex* v4 = tn -> destination;
     Face* f = e->incidentFace;
+    Face* tf = tf->incidentFace;
 
     //check if the are coplanar
     bool cop = coplanar(v1,v2,v3,v4);
@@ -261,11 +274,18 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap) {
     if(cop == true )
     {
       //if(e == hedge ) D.infiniteFace()->holes.push_back(n);
-      te->incidentFace->eliminate();
+      if(tf == te)
+      {
+        if(length_greater(n,p)) f->holes.push_back(p);
+        else f->holes.push_back(n);
+      }
+      else
+      {
+        tf->eliminate();
+        facemap.erase(tf);
+      }
       e -> eliminate();
-      te -> eliminate ();
-      facemap.erase(te->incidentFace);
-
+      te -> eliminate();
       n->prev = tp;
       p->next = tn;
       tn->prev = p;
@@ -273,6 +293,7 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap) {
       tn->incidentFace = f;
       tp->incidentFace = f;
       f->exteriorEdge = n;
+      }
     }
 
     DCELElement* I  = D.findInValid();

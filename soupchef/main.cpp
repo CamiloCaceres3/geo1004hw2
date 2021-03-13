@@ -204,38 +204,49 @@ void groupTriangles(DCEL & D, std::unordered_map< HalfEdge*, std::vector<int> > 
 
 std:: cout << D.infiniteFace()->holes.size() << std::endl;
 
+std::vector<double> cross(std::vector<double> V1, std::vector<double> V2)
+{
+
+  std::vector<double> v;
+  v.push_back(V1[1] * V2[2] - V1[2] * V2[1]);
+  v.push_back(-(V1[0] * V2[2] - V1[2] * V2[0]));
+  v.push_back(V1[0] * V2[1] - V1[1] * V2[0]);
+  return v;  
+}
+
+double dot(std::vector<double> V1, std::vector<double> V2)
+{
+  double d = 0.0;
+  for (int i = 0; i < V1.size(); i++)
+  {
+    d = d + (V1[i] * V2[i]);
+  }
+  return d;
+}
 
 }
 std::vector<double> getNormalVec(Vertex* &v1, Vertex* &v2, Vertex* &v3){
   //(v2-v1)X(v3-v1)
   std::vector<double> v12 {v1->x - v2->x, v1->y - v2->y, v1->z - v2->z};
   std::vector<double> v13 {v1->x - v3->x, v1->y - v3->y, v1->z - v3->z};
-  return cross(v12,v13);
+  std::vector<double> res = cross(v12,v13);
+  return res;
 }
 std::vector<double> getPlaneCenter(Vertex* &v1, Vertex* &v2, Vertex* &v3){
   std::vector<double> vc {(v1->x + v2->x + v3->x)/3, (v1->y + v2->y + v3->y)/3, (v1->z + v2->z + v3->z)/3};
   return vc;
 }
-/*
-double signedVolume(Vertex* &v1, Vertex* &v2, Vertex* &v3, std::vector<double> a){
-  std::vector<double> v1a {v1.x - a[0], v1.y - a[1], v1.z - a[2]};
-  std::vector<double> v2a {v2.x - a[0], v2.y - a[1], v2.z - a[2]};
-  std::vector<double> v3a {v3.x - a[0], v3.y - a[1], v3.z - a[2]};
-  std::vector<double> v2av3a = cross(v2a, v3a);
-  double dotv1v2v3a = dot(v1a, v2av3a);
-  double res = dotv1v2v3a/6;
-  return res;
-}*/
+
 std::vector<double> vertToVec(Vertex* &v1){
   std::vector<double> vec1{v1->x,v1->y,v1->z};
 }
 double signedVolume(std::vector<double> v1, std::vector<double> v2, std::vector<double> v3, std::vector<double> v4){
   std::vector<double> v1v4 {v1[0] - v4[0], v1[1] - v4[1], v1[2] - v4[2]};
   std::vector<double> v2v4 {v2[0] - v4[0], v2[1] - v4[1], v2[2] - v4[2]};
-  std::vector<double> v3v4 {v3.x - v4[0], v3[1] - v4[1], v3[2] - v4[2]};
+  std::vector<double> v3v4 {v3[0] - v4[0], v3[1] - v4[1], v3[2] - v4[2]};
   std::vector<double> v2v4v3v4 = cross(v2v4, v3v4);
   double dotv1v2v3v4 = dot(v1v4, v2v4v3v4);
-  double res = dotv1v2v3v4/6
+  double res = dotv1v2v3v4/6;
   return res;
 }
 
@@ -269,9 +280,9 @@ bool intersectCheck(Vertex* &v1, Vertex* &v2, Vertex* &v3, std::vector<double> o
   //4
   double v31 = signedVolume(origin, destination, vec3, vec1);
   double v32 = signedVolume(origin, destination, vec3, vec2);
-  bool check3 = false;
+  bool check4 = false;
   if ( v31 * v32 <= 0){
-    check3 = true;
+    check4 = true;
   }
   if (check1 && check2 && check3 && check4){
     return true;
@@ -286,37 +297,34 @@ bool intersectCheck(Vertex* &v1, Vertex* &v2, Vertex* &v3, std::vector<double> o
 void orientMeshes(DCEL & D) {
     // to do
 
-  for ( const auto & f : D.faces() ) {
+  for (auto & f : facemap ){
     //create normal & attach to center plane (normal vec * 10000 + point of face)
-    for ( const auto & f : D.faces() ) {
-      //check for intersection with aLL faces, count nr of intersecitons
-      if (){// if nr of intersecitons is uneven
-          // change orientation
+    std::vector<double> normaldir = getNormalVec(f.first, f.second, f.third);
+    std::vector<double> originnorm = vertToVec(f.first);
+    double scaledir = 10000
+    std::vector<double> destnorm {normdir[0]*scaledir + originnorm[0], normdir[1]*scaledir + originnorm[1], normdir[2]*scaledir + originnorm[2]};
+    int count = 0;
+    for (auto & f2 : facemap ){
+      if ( f != f2){
+
+        if (intersectCheck(f2.first, f2.second, f2.third, originnorm, destnorm)){
+          count = count + 1;
+        }
+      }
+      if ( count % 2 == 0){
+        Vertex* vtemp = f.first;
+        f.first = f.second;
+        f.second = vtemp; 
       }
 
     }
   }
 }
+
 // 4.
-std::vector<double> cross(std::vector<double> V1, std::vector<double> V2)
-{
 
-  std::vector<double> v;
-  v.push_back(V1[1] * V2[2] - V1[2] * V2[1]);
-  v.push_back(-(V1[0] * V2[2] - V1[2] * V2[0]));
-  v.push_back(V1[0] * V2[1] - V1[1] * V2[0]);
-  return v;  
-}
 
-double dot(std::vector<double> V1, std::vector<double> V2)
-{
-  double d = 0.0;
-  for (int i = 0; i < V1.size(); i++)
-  {
-    d = d + (V1[i] * V2[i]);
-  }
-  return d;
-}
+
 
 bool coplanar(Vertex* &v1, Vertex* &v2, Vertex* &v3, Vertex* &v4)
 {
@@ -563,7 +571,7 @@ int main(int argc, const char * argv[]) {
   // Demonstrate how to use the DCEL to get you started (see function implementation below)
   // you can remove this from the final code
   //DemoDCEL();
-
+ 
   // create an empty DCEL
   DCEL D;
   //create an unordered map 

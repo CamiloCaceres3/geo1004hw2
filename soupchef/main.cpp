@@ -239,6 +239,7 @@ std::vector<double> getPlaneCenter(Vertex* &v1, Vertex* &v2, Vertex* &v3){
 
 std::vector<double> vertToVec(Vertex* &v1){
   std::vector<double> vec1{v1->x,v1->y,v1->z};
+  return vec1;
 }
 double signedVolume(std::vector<double> v1, std::vector<double> v2, std::vector<double> v3, std::vector<double> v4){
   std::vector<double> v1v4 {v1[0] - v4[0], v1[1] - v4[1], v1[2] - v4[2]};
@@ -294,19 +295,24 @@ bool intersectCheck(Vertex* &v1, Vertex* &v2, Vertex* &v3, std::vector<double> o
 
 
 // 3.
-void orientMeshes(DCEL & D) {
+void orientMeshes(DCEL & D, std::unordered_map< Face*, int> facemap) {
     // to do
 
   for (auto & f : facemap ){
     //create normal & attach to center plane (normal vec * 10000 + point of face)
     std::vector<double> normaldir = getNormalVec(f.first, f.second, f.third);
     std::vector<double> originnorm = vertToVec(f.first);
-    double scaledir = 10000
-    std::vector<double> destnorm {normdir[0]*scaledir + originnorm[0], normdir[1]*scaledir + originnorm[1], normdir[2]*scaledir + originnorm[2]};
+    double scaledir = 10000;
+    //std::vector<double> destnorm  { normaldir[0]*scaledir + originnorm[0], normaldir[1]*scaledir + originnorm[1], normaldir[2]*scaledir + originnorm[2]};
+    std::vector<double> destnorm;
+    destnorm.push_back(normaldir[0]*scaledir + originnorm[0]);
+    destnorm.push_back(normaldir[1]*scaledir + originnorm[1]);
+    destnorm.push_back(normaldir[2]*scaledir + originnorm[2]);
+
+
     int count = 0;
     for (auto & f2 : facemap ){
       if ( f != f2){
-
         if (intersectCheck(f2.first, f2.second, f2.third, originnorm, destnorm)){
           count = count + 1;
         }

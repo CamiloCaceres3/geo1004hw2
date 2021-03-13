@@ -277,11 +277,15 @@ void orientMeshes(DCEL & D) {
     // to do
 
   for ( const auto & f : D.faces() ) {
-    f->v
+    //create normal & attach to center plane (normal vec * 10000 + point of face)
+    for ( const auto & f : D.faces() ) {
+      //check for intersection with aLL faces, count nr of intersecitons
+      if (){// if nr of intersecitons is uneven
+          // change orientation
+      }
 
-
-}
-
+    }
+  }
 }
 // 4.
 std::vector<double> cross(std::vector<double> V1, std::vector<double> V2)

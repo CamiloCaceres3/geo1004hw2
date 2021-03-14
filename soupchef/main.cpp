@@ -201,8 +201,9 @@ void groupTriangles(DCEL & D, std::unordered_map< HalfEdge*, std::vector<int> > 
       list_em = true;
     }
   }
+}
 
-std:: cout << D.infiniteFace()->holes.size() << std::endl;
+//std::cout << D.infiniteFace()->holes.size() << std::endl;
 
 std::vector<double> cross(std::vector<double> V1, std::vector<double> V2)
 {
@@ -224,7 +225,7 @@ double dot(std::vector<double> V1, std::vector<double> V2)
   return d;
 }
 
-}
+
 std::vector<double> getNormalVec(Vertex* &v1, Vertex* &v2, Vertex* &v3){
   //(v2-v1)X(v3-v1)
   std::vector<double> v12 {v1->x - v2->x, v1->y - v2->y, v1->z - v2->z};
@@ -232,6 +233,7 @@ std::vector<double> getNormalVec(Vertex* &v1, Vertex* &v2, Vertex* &v3){
   std::vector<double> res = cross(v12,v13);
   return res;
 }
+
 std::vector<double> getPlaneCenter(Vertex* &v1, Vertex* &v2, Vertex* &v3){
   std::vector<double> vc {(v1->x + v2->x + v3->x)/3, (v1->y + v2->y + v3->y)/3, (v1->z + v2->z + v3->z)/3};
   return vc;
@@ -241,6 +243,7 @@ std::vector<double> vertToVec(Vertex* &v1){
   std::vector<double> vec1{v1->x,v1->y,v1->z};
   return vec1;
 }
+
 double signedVolume(std::vector<double> v1, std::vector<double> v2, std::vector<double> v3, std::vector<double> v4){
   std::vector<double> v1v4 {v1[0] - v4[0], v1[1] - v4[1], v1[2] - v4[2]};
   std::vector<double> v2v4 {v2[0] - v4[0], v2[1] - v4[1], v2[2] - v4[2]};
@@ -293,15 +296,12 @@ bool intersectCheck(Vertex* &v1, Vertex* &v2, Vertex* &v3, std::vector<double> o
   };
 }
 
-
 // 3.
-void orientMeshes(DCEL & D, std::unordered_map< Face*, int> facemap) {
+void orientMeshes(DCEL & D, std::unordered_map< Face*, int> facemap, HalfEdge* e) {
     // to do
-
-  for (auto & f : facemap ){
     //create normal & attach to center plane (normal vec * 10000 + point of face)
-    std::vector<double> normaldir = getNormalVec(f.first, f.second, f.third);
-    std::vector<double> originnorm = vertToVec(f.first);
+    std::vector<double> normaldir = getNormalVec(e->origin, e->destination, e->next->destination);
+    std::vector<double> originnorm = vertToVec(e->origin);
     double scaledir = 10000;
     //std::vector<double> destnorm  { normaldir[0]*scaledir + originnorm[0], normaldir[1]*scaledir + originnorm[1], normaldir[2]*scaledir + originnorm[2]};
     std::vector<double> destnorm;
@@ -311,20 +311,20 @@ void orientMeshes(DCEL & D, std::unordered_map< Face*, int> facemap) {
 
 
     int count = 0;
-    for (auto & f2 : facemap ){
-      if ( f != f2){
-        if (intersectCheck(f2.first, f2.second, f2.third, originnorm, destnorm)){
+    for (auto & f2:D.faces()){
+      if ( e->origin != f2->exteriorEdge->origin && e->origin != f2->exteriorEdge->destination && e->origin != f2->exteriorEdge->next->destination ){
+        if (intersectCheck(f2->exteriorEdge->origin, f2->exteriorEdge->destination, f2->exteriorEdge->next->destination, originnorm, destnorm)){
           count = count + 1;
         }
       }
       if ( count % 2 == 0){
-        Vertex* vtemp = f.first;
-        f.first = f.second;
-        f.second = vtemp; 
+        Vertex* vtemp = e->origin;
+        e->origin = e->destination;
+        e->destination = vtemp; 
       }
 
     }
-  }
+  
 }
 
 // 4.
@@ -434,7 +434,6 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap, st
             tn->incidentFace = f;
             tn = tn->next;
             } while ( e_start!=tn) ; 
-        
         }
       // we checked the hedge e, now check for other faces 
       groupmap[e] =1; groupmap[te] =1;

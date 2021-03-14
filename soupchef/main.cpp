@@ -347,7 +347,7 @@ void regGrowingOrientation(DCEL & D, std::unordered_map<Face*, int> fmap, std::u
 }
 
 // 3.
-void orientFace(DCEL & D, std::unordered_map< Face*, int> facemap, HalfEdge* e) {
+void orientFace(DCEL & D, std::unordered_map< Face*, int> fmap, std::unordered_map< Face*, int> facemap, HalfEdge* e) {
     // to do
     //create normal & attach to center plane (normal vec * 10000 + point of face)
     std::vector<double> normaldir = getNormalVec(e->origin, e->destination, e->next->destination);
@@ -369,10 +369,18 @@ void orientFace(DCEL & D, std::unordered_map< Face*, int> facemap, HalfEdge* e) 
       }
       if ( count % 2 == 0){
           changeOrientation(D, facemap, e->incidentFace);
+          regGrowingOrientation(D, fmap, facemap, e);
       }
     }
 }
 
+
+void OrientationOfMap(DCEL & D, std::unordered_map< Face*, int> fmap, std::unordered_map< Face*, int> facemap){
+  for(  auto hedge: D.infiniteFace()->holes)
+  {
+    orientFace(D, fmap, facemap, hedge);
+  }
+}
 // 4.
 
 
@@ -643,6 +651,7 @@ int main(int argc, const char * argv[]) {
   // 3. determine the correct orientation for each mesh and ensure all its triangles 
   //    are consistent with this correct orientation (ie. all the triangle normals 
   //    are pointing outwards).
+   OrientationOfMap(D, fmap, facemap);
     std::unordered_map< HalfEdge*, int> groupmap;
   for( auto & f : groupmap)
   {

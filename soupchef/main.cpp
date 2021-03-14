@@ -320,7 +320,8 @@ void changeOrientation(DCEL & D, std::unordered_map< Face*, int> facemap, Face* 
 }
 
 
-void regGrowingOrientation(DCEL & D, std::unordered_map< Face*, int> facemap, HalfEdge* e ){
+void regGrowingOrientation(DCEL & D, std::unordered_map<Face*, int> fmap, std::unordered_map< Face*, int> facemap, HalfEdge* e ){
+  fmap[e->incidentFace] == 0;
   if (e->origin == e->twin->origin ){
     changeOrientation(D, facemap, e->twin->incidentFace);
   }
@@ -330,8 +331,12 @@ void regGrowingOrientation(DCEL & D, std::unordered_map< Face*, int> facemap, Ha
     if (e->prev->origin == e->prev->twin->origin ){
     changeOrientation(D, facemap, e->prev->twin->incidentFace);
   }
-  regGrowingOrientation(D, facemap, e->twin->next);
-  regGrowingOrientation(D, facemap, e->twin->prev);
+  if (fmap.find(e->twin->next->incidentFace) == fmap.end()){
+  regGrowingOrientation(D, fmap, facemap, e->twin->next);
+    }
+  if (fmap.find(e->twin->prev->incidentFace) == fmap.end()){
+  regGrowingOrientation(D, fmap, facemap, e->twin->prev);
+    }
   //original edge, check twin orientation, 
   //                if orientation bad, change orientation, and perform reggrowing on twin->next
   //            check next edge twin orientation
@@ -623,6 +628,7 @@ int main(int argc, const char * argv[]) {
   //create an unordered map 
   std::unordered_map< HalfEdge*, std::vector<int> > hemap;
   std::unordered_map<int, Vertex*> umap;
+  std::unordered_map< Face*, int> fmap;
   //  create unrdered map
 
   // 1. read the triangle soup from the OBJ input file and convert it to the DCEL,

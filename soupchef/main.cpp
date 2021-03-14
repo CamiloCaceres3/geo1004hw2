@@ -367,7 +367,7 @@ void orientFace(DCEL & D, std::unordered_map< Face*, int> fmap, std::unordered_m
           count = count + 1;
         }
       }
-      if ( count % 2 == 0){
+      if ( count % 2 != 0){
           changeOrientation(D, facemap, e->incidentFace);
           regGrowingOrientation(D, fmap, facemap, e);
       }
@@ -624,7 +624,7 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
 
 
 int main(int argc, const char * argv[]) {
-  const char *file_in = "polygonal_hole.obj";
+  const char *file_in = "bk_soup.obj";
   const char *file_out = "bk.json";
 
   // Demonstrate how to use the DCEL to get you started (see function implementation below)

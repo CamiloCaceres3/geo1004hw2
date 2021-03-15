@@ -319,9 +319,11 @@ void changeOrientation(DCEL & D, std::unordered_map< Face*, int> facemap, Face* 
 }
 
 
-bool regGrowingOrientation(DCEL & D, std::unordered_map<Face*, int> fmap, std::unordered_map< Face*, int> facemap, HalfEdge* e ){
-  fmap[e->incidentFace] == 0;
-  std::cout<< "fmap size " << fmap.size() << std::endl;
+bool regGrowingOrientation(DCEL & D, std::unordered_map<Face*, int> fmap, std::unordered_map< Face*, int> facemap, HalfEdge* e , int count){
+  //fmap[e->incidentFace] == 0;
+  count = count + 1;
+  std::cout<<"count: "<< count<< std::endl;
+  fmap[e->incidentFace] = 1;
     if (e->origin == e->twin->origin ){
     changeOrientation(D, facemap, e->twin->incidentFace);
     }
@@ -333,13 +335,17 @@ bool regGrowingOrientation(DCEL & D, std::unordered_map<Face*, int> fmap, std::u
   }
   bool a = true;
   bool b = true;
-  if (fmap.find(e->twin->next->incidentFace) == fmap.end()){
-  a = regGrowingOrientation(D, fmap, facemap, e->twin->next);
+  bool c = true;
+  if (fmap[e->next->twin->incidentFace] == 0){
+  a = regGrowingOrientation(D, fmap, facemap, e->next->twin, count);
     }
-  if (fmap.find(e->twin->prev->incidentFace) == fmap.end()){
-  b = regGrowingOrientation(D, fmap, facemap, e->twin->prev);
+  if (fmap[e->prev->twin->incidentFace] == 0){
+  b = regGrowingOrientation(D, fmap, facemap, e->prev->twin, count);
     }
-  if (a && b){
+  if (fmap[e->twin->incidentFace] == 0){
+  c = regGrowingOrientation(D, fmap, facemap, e->twin, count);
+    }
+  if (a && b && c){
     return true;
   }
   //original edge, check twin orientation, 
@@ -377,10 +383,10 @@ void orientFace(DCEL & D, std::unordered_map< Face*, int> fmap, std::unordered_m
     }
       if ( count % 2 != 0){
           changeOrientation(D, facemap, e->incidentFace);
-          regGrowingOrientation(D, fmap, facemap, e);
+          regGrowingOrientation(D, fmap, facemap, e, count);
       }
       else{
-         regGrowingOrientation(D, fmap, facemap, e);
+         regGrowingOrientation(D, fmap, facemap, e, count);
       }
       
     }
@@ -638,7 +644,7 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
 int main(int argc, const char * argv[]) {
   const char *file_in = "bk_soup.obj";
   const char *file_out = "bk.json";
-
+  int count = 0;
   // Demonstrate how to use the DCEL to get you started (see function implementation below)
   // you can remove this from the final code
   //DemoDCEL();
@@ -648,7 +654,7 @@ int main(int argc, const char * argv[]) {
   //create an unordered map 
   std::unordered_map< HalfEdge*, std::vector<int> > hemap;
   std::unordered_map<int, Vertex*> umap;
-  std::unordered_map< Face*, int> fmap;
+
   //  create unrdered map
 
   // 1. read the triangle soup from the OBJ input file and convert it to the DCEL,
@@ -663,6 +669,11 @@ int main(int argc, const char * argv[]) {
   // 3. determine the correct orientation for each mesh and ensure all its triangles 
   //    are consistent with this correct orientation (ie. all the triangle normals 
   //    are pointing outwards).
+  std::unordered_map< Face*, int> fmap;
+  for( auto & f : facemap)
+  {
+    fmap.insert({f.first,0});
+  }
    OrientationOfMap(D, fmap, facemap);
     std::unordered_map< HalfEdge*, int> groupmap;
   for( auto & f : groupmap)

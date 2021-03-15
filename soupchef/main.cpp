@@ -315,28 +315,33 @@ void changeOrientation(DCEL & D, std::unordered_map< Face*, int> facemap, Face* 
   e_2->destination = v_2;
   e_2->next = e_1;
   e_2->prev = e_0;
-
   // take all edges from a triangle face and reverse them
 }
 
 
-void regGrowingOrientation(DCEL & D, std::unordered_map<Face*, int> fmap, std::unordered_map< Face*, int> facemap, HalfEdge* e ){
+bool regGrowingOrientation(DCEL & D, std::unordered_map<Face*, int> fmap, std::unordered_map< Face*, int> facemap, HalfEdge* e ){
   fmap[e->incidentFace] == 0;
-  if (e->origin == e->twin->origin ){
+
+    if (e->origin == e->twin->origin ){
     changeOrientation(D, facemap, e->twin->incidentFace);
-  }
+    }
     if (e->next->origin == e->next->twin->origin ){
     changeOrientation(D, facemap, e->next->twin->incidentFace);
   }
     if (e->prev->origin == e->prev->twin->origin ){
     changeOrientation(D, facemap, e->prev->twin->incidentFace);
   }
+  bool a = true;
+  bool b = true;
   if (fmap.find(e->twin->next->incidentFace) == fmap.end()){
-  regGrowingOrientation(D, fmap, facemap, e->twin->next);
+  a = regGrowingOrientation(D, fmap, facemap, e->twin->next);
     }
   if (fmap.find(e->twin->prev->incidentFace) == fmap.end()){
-  regGrowingOrientation(D, fmap, facemap, e->twin->prev);
+  b = regGrowingOrientation(D, fmap, facemap, e->twin->prev);
     }
+  if (a && b){
+    return true;
+  }
   //original edge, check twin orientation, 
   //                if orientation bad, change orientation, and perform reggrowing on twin->next
   //            check next edge twin orientation
@@ -344,12 +349,14 @@ void regGrowingOrientation(DCEL & D, std::unordered_map<Face*, int> fmap, std::u
   //            check last edge twin orientation
   //                if oriantation bad, change orientation, perform reggrowing on twin->next
   //recurse
+  return false;
 }
 
 // 3.
 void orientFace(DCEL & D, std::unordered_map< Face*, int> fmap, std::unordered_map< Face*, int> facemap, HalfEdge* e) {
     // to do
     //create normal & attach to center plane (normal vec * 10000 + point of face)
+  std::cout<<"orientface"<<std::endl;
     std::vector<double> normaldir = getNormalVec(e->origin, e->destination, e->next->destination);
     std::vector<double> originnorm = vertToVec(e->origin);
     double scaledir = 10000;
@@ -367,12 +374,17 @@ void orientFace(DCEL & D, std::unordered_map< Face*, int> fmap, std::unordered_m
           count = count + 1;
         }
       }
+    }
       if ( count % 2 != 0){
           changeOrientation(D, facemap, e->incidentFace);
           regGrowingOrientation(D, fmap, facemap, e);
       }
+      else{
+         regGrowingOrientation(D, fmap, facemap, e);
+      }
+      
     }
-}
+
 
 
 void OrientationOfMap(DCEL & D, std::unordered_map< Face*, int> fmap, std::unordered_map< Face*, int> facemap){

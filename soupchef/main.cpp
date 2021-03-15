@@ -366,7 +366,7 @@ void orientFace(DCEL & D, std::unordered_map< Face*, int> fmap, std::unordered_m
     //create normal & attach to center plane (normal vec * 10000 + point of face)
   std::cout<<"orientface"<<std::endl;
     std::vector<double> normaldir = getNormalVec(e->origin, e->destination, e->next->destination);
-    std::vector<double> originnorm = vertToVec(e->origin);
+    std::vector<double> originnorm = getPlaneCenter(e->origin, e-> destination, e->next->destination);
     double scaledir = 10000;
     //std::vector<double> destnorm  { normaldir[0]*scaledir + originnorm[0], normaldir[1]*scaledir + originnorm[1], normaldir[2]*scaledir + originnorm[2]};
     std::vector<double> destnorm;
@@ -383,11 +383,16 @@ void orientFace(DCEL & D, std::unordered_map< Face*, int> fmap, std::unordered_m
         }
       }
     }
-      if ( count % 2 != 0){
+              std::cout<<"count "<< count<<std::endl;
+
+      if ( count % 2 != 0 && count != 0){
+          std::cout<<"not even"<<std::endl;
           changeOrientation(D, facemap, e->incidentFace);
-          regGrowingOrientation(D, fmap, facemap, e, count);
+          orientFace(D, fmap, facemap, e);
+          //regGrowingOrientation(D, fmap, facemap, e, count);
       }
       else{
+         std::cout<<"even"<<std::endl;
          regGrowingOrientation(D, fmap, facemap, e, count);
       }
       
@@ -607,7 +612,7 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
         //finish the holes or the face
         myfile << "]";
       // finish the boundaries
-      std:: cout << last_f << "," << faces_in_mesh(facemap , building ) << std::endl;
+      //std:: cout << last_f << "," << faces_in_mesh(facemap , building ) << std::endl;
       if(faces_in_mesh(facemap , building ) >  last_f) myfile << "],";
       else myfile << "]";
     }
@@ -683,7 +688,7 @@ int main(int argc, const char * argv[]) {
     groupmap.insert({f.first,0});
   }
   // 4. merge adjacent triangles that are co-planar into larger polygonal faces.
- // mergeCoPlanarFaces( D,facemap, groupmap);
+ mergeCoPlanarFaces( D,facemap, groupmap);
   // 5. write the meshes with their faces to a valid CityJSON output file.
   exportCityJSON(D, file_out, hemap, umap, facemap);
   return 0;

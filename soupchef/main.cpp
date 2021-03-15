@@ -321,7 +321,7 @@ void changeOrientation(DCEL & D, std::unordered_map< Face*, int> facemap, Face* 
 
 bool regGrowingOrientation(DCEL & D, std::unordered_map<Face*, int> fmap, std::unordered_map< Face*, int> facemap, HalfEdge* e ){
   fmap[e->incidentFace] == 0;
-
+  std::cout<< "fmap size " << fmap.size() << std::endl;
     if (e->origin == e->twin->origin ){
     changeOrientation(D, facemap, e->twin->incidentFace);
     }

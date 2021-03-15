@@ -319,35 +319,38 @@ void changeOrientation(DCEL & D, std::unordered_map< Face*, int> facemap, Face* 
 }
 
 
-bool regGrowingOrientation(DCEL & D, std::unordered_map<Face*, int> fmap, std::unordered_map< Face*, int> facemap, HalfEdge* e , int count){
+void regGrowingOrientation(DCEL & D, std::unordered_map<Face*, int> fmap, std::unordered_map< Face*, int> facemap, HalfEdge*&ee , int count){
   //fmap[e->incidentFace] == 0;
-  count = count + 1;
-  std::cout<<"count: "<< count<< std::endl;
-  fmap[e->incidentFace] = 1;
-    if (e->origin == e->twin->origin ){
-    changeOrientation(D, facemap, e->twin->incidentFace);
-    }
-    if (e->next->origin == e->next->twin->origin ){
-    changeOrientation(D, facemap, e->next->twin->incidentFace);
+
+  std::stack<HalfEdge*> s;
+  s.push(ee);
+  while(!s.empty() )
+    {
+      //take the first element of the stack
+      HalfEdge* e = s.top();
+      s.pop();
+      if(fmap[e->incidentFace]==0)
+      {
+        if (e->origin == e->twin->origin ){
+        changeOrientation(D, facemap, e->twin->incidentFace);
+        }
+        if (e->next->origin == e->next->twin->origin ){
+        changeOrientation(D, facemap, e->next->twin->incidentFace);
+        }
+        if (e->prev->origin == e->prev->twin->origin ){
+        changeOrientation(D, facemap, e->prev->twin->incidentFace);
+        }
+      
+      fmap[e->incidentFace] = 1;
+      if (fmap[e->next->twin->incidentFace] == 0){
+          s.push(e->next->twin);
+        };
+      if (fmap[e->prev->twin->incidentFace] == 0){
+          s.push(e->prev->twin);
+          }
+        }
   }
-    if (e->prev->origin == e->prev->twin->origin ){
-    changeOrientation(D, facemap, e->prev->twin->incidentFace);
-  }
-  bool a = true;
-  bool b = true;
-  bool c = true;
-  if (fmap[e->next->twin->incidentFace] == 0){
-  a = regGrowingOrientation(D, fmap, facemap, e->next->twin, count);
-    }
-  if (fmap[e->prev->twin->incidentFace] == 0){
-  b = regGrowingOrientation(D, fmap, facemap, e->prev->twin, count);
-    }
-  if (fmap[e->twin->incidentFace] == 0){
-  c = regGrowingOrientation(D, fmap, facemap, e->twin, count);
-    }
-  if (a && b && c){
-    return true;
-  }
+
   //original edge, check twin orientation, 
   //                if orientation bad, change orientation, and perform reggrowing on twin->next
   //            check next edge twin orientation
@@ -355,8 +358,7 @@ bool regGrowingOrientation(DCEL & D, std::unordered_map<Face*, int> fmap, std::u
   //            check last edge twin orientation
   //                if oriantation bad, change orientation, perform reggrowing on twin->next
   //recurse
-  return false;
-}
+  }
 
 // 3.
 void orientFace(DCEL & D, std::unordered_map< Face*, int> fmap, std::unordered_map< Face*, int> facemap, HalfEdge* e) {
@@ -681,7 +683,7 @@ int main(int argc, const char * argv[]) {
     groupmap.insert({f.first,0});
   }
   // 4. merge adjacent triangles that are co-planar into larger polygonal faces.
-  mergeCoPlanarFaces( D,facemap, groupmap);
+ // mergeCoPlanarFaces( D,facemap, groupmap);
   // 5. write the meshes with their faces to a valid CityJSON output file.
   exportCityJSON(D, file_out, hemap, umap, facemap);
   return 0;
@@ -729,7 +731,6 @@ void DemoDCEL() {
   printDCEL(D);
 
   /*
-
   v2 (0,1,0)
    o
    |\
@@ -738,15 +739,12 @@ void DemoDCEL() {
    o---o v1 (1,0,0)
   v0
   (0,0,0)
-
   We will construct the DCEL of a single triangle 
   in the plane z=0 (as shown above).
-
   This will require:
     3 vertices
     6 halfedges (2 for each edge)
     1 face
-
   */
   std::cout << "\n/// STEP 2 Adding triangle vertices...\n";
   Vertex* v0 = D.createVertex(0,0,0);

@@ -259,6 +259,8 @@ bool intersectCheck(Vertex* &v1, Vertex* &v2, Vertex* &v3, std::vector<double> o
   std::vector<double> vec1 = vertToVec(v1);
   std::vector<double> vec2 = vertToVec(v2);
   std::vector<double> vec3 = vertToVec(v3);
+  //std::cout<<"origin "<< origin[0]<<" "<<  origin[1]<<" "<< origin[2] <<std::endl;
+  //std::cout<<"destination "<< destination[0] <<" "<<destination[1]<<" "<< destination[2] <<std::endl;
 
   //1
   double vOrigin = signedVolume(vec1, vec2, vec3, origin);
@@ -289,6 +291,10 @@ bool intersectCheck(Vertex* &v1, Vertex* &v2, Vertex* &v3, std::vector<double> o
     check4 = true;
   }
   if (check1 && check2 && check3 && check4){
+    //std::cout<< v1->x<< " "<< v1->y<<" "<< v1->z<< std::endl;
+    //std::cout<< v2->x<< " "<< v2->y<<" "<< v2->z<< std::endl;
+    //std::cout<< v3->x<< " "<< v3->y<<" "<< v3->z<< std::endl;
+
     return true;
   }
   else{
@@ -374,15 +380,23 @@ void orientFace(DCEL & D, std::unordered_map< Face*, int> fmap, std::unordered_m
     destnorm.push_back(normaldir[1]*scaledir + originnorm[1]);
     destnorm.push_back(normaldir[2]*scaledir + originnorm[2]);
 
-
+    float res = 0;
     int count = 0;
-    for (auto & f2:D.faces()){
-      if ( e->origin != f2->exteriorEdge->origin && e->origin != f2->exteriorEdge->destination && e->origin != f2->exteriorEdge->next->destination ){
+    for (auto & f2 : D.faces()){
+      if ( e->incidentFace != f2->exteriorEdge->incidentFace){
         if (intersectCheck(f2->exteriorEdge->origin, f2->exteriorEdge->destination, f2->exteriorEdge->next->destination, originnorm, destnorm)){
+          if (intersectCheck(f2->exteriorEdge->origin, f2->exteriorEdge->destination, f2->exteriorEdge->destination, originnorm, destnorm) ||
+                  intersectCheck(f2->exteriorEdge->origin, f2->exteriorEdge->next->destination, f2->exteriorEdge->next->destination, originnorm, destnorm) ||
+                  intersectCheck(f2->exteriorEdge->next->destination, f2->exteriorEdge->destination, f2->exteriorEdge->destination, originnorm, destnorm)){
+            res = res + 0.5;
+            std::cout<<"res "<<res<<std::endl;
+          }
           count = count + 1;
+          std::cout<<"count "<<count<<std::endl;
         }
       }
     }
+    count = count - res;
               std::cout<<"count "<< count<<std::endl;
 
       if ( count % 2 != 0 && count != 0){

@@ -482,36 +482,48 @@ bool is_hole(HalfEdge* e)
   return false;
 
 }
-void traverseEdge(DCEL & D, std::unordered_map< HalfEdge*, int i> &hedmap, 
-                          Halfedge* e, int i, Halfedge* startedge, 
-                          std::unordered_map< int i, int type> &typemap){ 
-  count = count+1;
+void traverseEdge(DCEL & D, std::unordered_map< HalfEdge*, int > &hedmap, 
+                              std::unordered_map< int, HalfEdge*> &dehmap,
+                          HalfEdge* e, int i, HalfEdge* startedge, 
+                          std::unordered_map< int , int > &typemap){ 
   hedmap[e] == i;
+  dehmap[i] == e;
   typemap[i] == 0;
   //type 0 = unclassified, 1 = exterior, 2 = hole
   if (e != startedge){
-    traverseEdge(D, hedmap, e->next, i, startedge);
+    traverseEdge(D, hedmap, dehmap, e->next, i, startedge, typemap);
   }
 }
 
-void getBoundaries(DCEL & D, std::unordered_map< HalfEdge*, int i > &hedmap, 
-                 std::unordered_map< int i, int type> &typemap){
+void getBoundaries(DCEL & D, std::unordered_map< HalfEdge*, int  > &hedmap, 
+                    std::unordered_map< int, HalfEdge*> &dehmap,
+                 std::unordered_map< int , int > &typemap){
 //for all half edges
 int i = 0;
-for(auto hedge : D){
-  if (hedmap.find(hedge) == .end()){
+  for ( const auto & e : D.halfEdges() ) {
+  int seen = 0;
+  for (int i; i < hedmap.size(); i++){
+      if (dehmap[i]->origin->x == e->origin->x &&
+          dehmap[i]->origin->y == e->origin->y &&
+          dehmap[i]->origin->z == e->origin->z &&
+          dehmap[i]->destination->x == e->destination->x &&
+          dehmap[i]->destination->y == e->destination->y &&
+          dehmap[i]->destination->z == e->destination->z 
+        ){
+          seen = 1;
+      }
+  }
+
+  if (seen == 0){
     i = i + 1;
-    traverseEdge(D, hedmap, hedge, i, hedge);
+    traverseEdge(D, hedmap, dehmap, e.get(), i, e.get(), typemap);
 }
-for (int i = 1, i <= typemap.size(); i++ ){
-  for (int j = 1, j <= typemap.size(); j++ ){
-  if (hedmap.find(i)->incidentFace == hedmap.find(j)->incidentFace && i!=j){
-    if(detect_hole(hedmap.find(i), hedmap.find(j))){
+for (int i = 1; i <= typemap.size(); i++ ){
+  for (int j = 1; j <= typemap.size(); j++ ){
+  if (dehmap[i]->incidentFace == dehmap[j]->incidentFace && i!=j){
+    if(detect_hole(dehmap[i], dehmap[j]) ){
       typemap[i]== 1;
       typemap[j]== 2;
-    }else{
-      typemap[j]== 1;
-      typemap[i]== 2;
     }
     }
   }
@@ -847,11 +859,13 @@ int main(int argc, const char * argv[]) {
     std::unordered_map< HalfEdge*, int> groupmap;
    
 
-  std::unordered_map< Edge*, int> hedmap;
+  std::unordered_map< HalfEdge*, int> hedmap;
   for( auto & f : hemap)
   {
     hedmap.insert({f.first,0});
   }
+
+  std::unordered_map< int, HalfEdge* > dehmap;
 
   std::unordered_map< int, int> typemap;
 
@@ -883,7 +897,7 @@ void printDCEL(DCEL & D) {
   }
 /*
   // iterate all elements of the DCEL and print the info for each element
-  const auto & vertices = D.vertices();
+  const auto & halfEdges = D.halfEdges()& vertices = D.vertices();
   const auto & halfEdges = D.halfEdges();
   const auto & faces = D.faces();
   std::cout << "DCEL has:\n";

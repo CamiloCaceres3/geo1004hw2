@@ -482,9 +482,49 @@ bool is_hole(HalfEdge* e)
   return false;
 
 }
+void traverseEdge(DCEL & D, std::unordered_map< HalfEdge*, int i> &hedmap, 
+                          Halfedge* e, int i, Halfedge* startedge, 
+                          std::unordered_map< int i, int type> &typemap){ 
+  count = count+1;
+  hedmap[e] == i;
+  typemap[i] == 0;
+  //type 0 = unclassified, 1 = exterior, 2 = hole
+  if (e != startedge){
+    traverseEdge(D, hedmap, e->next, i, startedge);
+  }
+}
+
+void getBoundaries(DCEL & D, std::unordered_map< HalfEdge*, int i > &hedmap, 
+                 std::unordered_map< int i, int type> &typemap){
+//for all half edges
+int i = 0;
+for(auto hedge : D){
+  if (hedmap.find(hedge) == .end()){
+    i = i + 1;
+    traverseEdge(D, hedmap, hedge, i, hedge);
+}
+for (int i = 1, i <= typemap.size(); i++ ){
+  for (int j = 1, j <= typemap.size(); j++ ){
+  if (hedmap.find(i)->incidentFace == hedmap.find(j)->incidentFace && i!=j){
+    if(detect_hole(hedmap.find(i), hedmap.find(j))){
+      typemap[i]== 1;
+      typemap[j]== 2;
+    }else{
+      typemap[j]== 1;
+      typemap[i]== 2;
+    }
+    }
+  }
+}
+}
+}
 
 
-void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap, std::unordered_map< HalfEdge*, int> &groupmap) {
+
+
+
+void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap, 
+                                  std::unordered_map< HalfEdge*, int> &groupmap) {
   // to do
   //for each mesh of the model we merge faces
   for(  auto hedge: D.infiniteFace()->holes)
@@ -805,6 +845,16 @@ int main(int argc, const char * argv[]) {
   }
    OrientationOfMap(D, fmap, facemap);
     std::unordered_map< HalfEdge*, int> groupmap;
+   
+
+  std::unordered_map< Edge*, int> hedmap;
+  for( auto & f : hemap)
+  {
+    hedmap.insert({f.first,0});
+  }
+
+  std::unordered_map< int, int> typemap;
+
 
   printDCEL(D);  
   for( auto & f : groupmap)

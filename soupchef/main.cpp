@@ -438,27 +438,49 @@ bool coplanar(Vertex* &v1, Vertex* &v2, Vertex* &v3, Vertex* &v4)
   std::vector<double> v  = cross(V1, V2);
   double d =  dot(v, V3);
 
-  if((d) == 0.0)
+  if((d) < 0.01)
   {
     return true;
   }
   else return false;
 }
 
-bool length_greater(HalfEdge* e1, HalfEdge* e2,HalfEdge* e3, HalfEdge* e4)
+bool detect_hole(HalfEdge* e1, HalfEdge* e2)
 {
-  Vertex* v1 = e1->origin;
-  Vertex* v2 = e1->destination;
-  Vertex* v3 = e2->origin; 
-  Vertex* v4 = e2->destination; 
-  Vertex* v5 = e3->origin;
-  Vertex* v6 = e3->destination;
-  Vertex* v7 = e4->origin; 
-  Vertex* v8 = e4->destination; 
-  double d1 = pow(v1->x - v2->x ,2) + pow(v1->y - v2->y ,2) + pow(v1->y - v2->y ,2) + pow(v5->x - v6->x ,2) + pow(v5->y - v6->y ,2) + pow(v5->y - v6->y ,2);
-  double d2 = pow(v3->x - v4->x ,2) + pow(v3->y - v4->y ,2) + pow(v3->y - v4->y ,2) + pow(v7->x - v8->x ,2) + pow(v7->y - v8->y ,2) + pow(v7->y - v8->y ,2);
-  if( d1 > d2) return true;
-  else return false;
+  double xmax = e1->origin->x,ymax = e1->origin->y, xmin = e1->origin->x, ymin = e1->origin->y;
+  //get bounding box
+  const HalfEdge* e_start = e1;
+        do {
+            if(e1->origin->x > xmax) xmax = e1->origin->x;
+            if(e1->origin->y > ymax) ymax = e1->origin->y;
+            if(e1->origin->x < xmin) xmin = e1->origin->x;
+            if(e1->origin->y < ymin) ymin = e1->origin->y;
+            e1 = e1->next;
+          } while ( e_start!=e1) ; 
+            if(e2->origin->x < xmax && e2->origin->y < ymax && e2->origin->x > xmin &&  e2->origin->y > ymin ) return true; 
+  return false  ;
+}
+
+bool is_hole(HalfEdge* e)
+{
+  Face* f = e->incidentFace;
+  if(f->holes.empty())
+  {
+    return false;
+  }
+  else
+  {
+    for(auto  holes: f->holes)
+    {
+        const HalfEdge* e_start = holes;
+        do {
+            if(holes == e) return true;
+            holes = holes->next;
+            } while ( e_start!=holes) ; 
+    }    
+  }
+  return false;
+
 }
 
 
@@ -467,7 +489,7 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap, st
   //for each mesh of the model we merge faces
   for(  auto hedge: D.infiniteFace()->holes)
   {
-    if(facemap[hedge->incidentFace] !=5)
+    if(facemap[hedge->incidentFace] ==1)
     {
     //start with the mesh assigned in the list of holes of the infinite face
     HalfEdge* erg = hedge;
@@ -495,58 +517,60 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap, st
       Face* f = e->incidentFace;
       Face* tf = tn->incidentFace;
 
-      //check if the are coplanar
+      //check if the are coplanar (all points should be coplanar)
       bool cop = true; 
-       HalfEdge* tnn  = tn;
-        HalfEdge* e_start = tnn;
-        do {
-            HalfEdge* ef  = e;
-            HalfEdge* e_start1 = ef;
-            do {
+      HalfEdge* tnn  = tn;
+      HalfEdge* e_start = tnn;
+      do {
+          HalfEdge* ef  = e;
+          HalfEdge* e_start1 = ef;
+          do {
               if(!coplanar(ef->origin,ef->destination,tnn->origin,tnn->destination)) 
-              {cop = false;
-              ef= e_start1;
+              { cop = false;
+                ef= e_start1;
               }
               else ef = ef->next;
-            } while ( e_start1!=ef) ; 
-              if(cop ==false)  tnn= e_start;
-              else tnn = tnn->next;
-            } while ( e_start!=tnn) ; 
-        
+              } while ( e_start1!=ef) ; 
+          if(cop ==false)  tnn= e_start;
+          else tnn = tnn->next;
+        } while ( e_start!=tnn) ;  
 
       if(cop == true)
       {
-        //if the faces of the twin is the same -> we have a hole!
-        std::cout << "coplanar" <<  s.size()  << std::endl;
-        if(tf == f)
-        {
-          // to check which edges belong to the hole
 
-          std::cout << "hole" <<  s.size()  << std::endl;
-          if(length_greater(n,p,tn,tp))
-            {
-              std::cout << "n mayor p" <<  s.size()  << std::endl;
-              f->holes.push_back(p);           
-               
-            }
-          else 
-            {
-              std::cout << "p mayor n" <<  s.size()  << std::endl;
-              f->holes.push_back(n);
-            }
-        }
-        // if the faces are not the same -> delete the face
-        else
-        {
-         // for ( auto g: tf-> holes)
-          //{
-           // f->holes.push_back(g) ;
-          //}
-          f->exteriorEdge = n;
-          tf->eliminate();
-          facemap.erase(tf);
+                     if(s.size()== 474 || n->destination   == e->origin )
+              {
+                    std::cout << "holes:::" <<  f->holes.size() << std::endl;
+                        const HalfEdge* e_start = e;
+                        do {
+            std::cout << "e:::" <<  s.size() << *e <<  *e->origin << *e->destination <<std::endl;
+            e = e->next;
+            } while ( e_start!=e) ; 
+                
+                        const HalfEdge* e_start1 = te;
+                        do {
+            std::cout << "twin:::" <<  s.size() << *te <<  *te->origin << *te->destination <<std::endl;
+            te = te->next;
+            } while ( e_start1!=te) ; 
+            for(auto f1 : f->holes){
+                                    const HalfEdge* e_start2 = f1;
+                        do {
+            std::cout << "holes e:::" <<  s.size() << *f1 <<  *f1->origin << *f1->destination <<std::endl;
+            f1 = f1->next;
+            } while ( e_start2!=f1) ;
+               } 
 
-        }
+                           for(auto f2 : tf->holes){
+                                    const HalfEdge* e_start3 = f2;
+                        do {
+            std::cout << "holes twin:::" <<  s.size() << *f2 <<  *f2->origin << *f2->destination <<  *e_start3  <<std::endl;
+            f2 = f2->next;
+            } while ( e_start3!=f2) ;
+               } 
+            std::cout << "exterior edge f1:::" <<  s.size() << *f->exteriorEdge <<  *f->exteriorEdge->origin << *f->exteriorEdge->destination <<std::endl;
+            std::cout << "exterior edge f12::" <<  s.size() << *tf->exteriorEdge <<  *tf->exteriorEdge->origin << *tf->exteriorEdge->destination <<std::endl;
+            }  
+
         //delete the edge and the twin
         e -> eliminate();
         te -> eliminate();
@@ -554,15 +578,60 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap, st
         p->next = tn;
         tn->prev = p;
         tp->next = n;
+        int hole_c = 0;
+        //if the faces of the twin is the same -> we have a hole!
+        std::cout << "coplanar" <<  s.size()  << std::endl;
+        if(tf == f)
+        {
+          // to check which edges belong to the hole
+          std::cout << "hole" <<  s.size()  << std::endl;
+          if(detect_hole(n,f->exteriorEdge))
+            {
+              hole_c = 1;
+              std::cout << "n mayor p" <<  s.size()  << std::endl;
+              f->holes.push_back(tn);           
+            }
+          else 
+            {
+              hole_c = 2;
+              std::cout << "p mayor n" <<  s.size()  << std::endl;
+              f->holes.push_back(n);
+            }
+        }
+        // if the faces are not the same -> delete the face
+        else
+        {
+          for ( auto &g: tf-> holes)
+          { 
+            f->holes.push_back(g);
+            const HalfEdge* e_start = g;
+              do {
+            g->incidentFace = f;
+            g = g->next;
+            } while ( e_start!=g) ; 
+          }
+
+          tf->eliminate();
+          facemap.erase(tf);
+        }
+        if(f->exteriorEdge == te || f->exteriorEdge == e) f->exteriorEdge = tn;
+        if(hole_c == 1 && is_hole(f->exteriorEdge)) f->exteriorEdge = n;
+        if(hole_c == 2 && is_hole(f->exteriorEdge)) f->exteriorEdge = tn;
+
+         // traverse all the deleted face and assigned the new face f
+        
         tn->incidentFace = f;
         tp->incidentFace = f;
-        // traverse all the deleted face and assigned the new face f
-        const HalfEdge* e_start = tn;
+         HalfEdge* he = f->exteriorEdge ;
+        const HalfEdge* e_start = he;
         do {
-            tn->incidentFace = f;
-            tn = tn->next;
-            } while ( e_start!=tn) ; 
-        }
+            he->incidentFace = f;
+            he = he->next;
+            } while ( e_start!=he) ; 
+          }
+
+
+        printDCEL(D);
       // we checked the hedge e, now check for other faces 
       //std::cout << "nin" <<  s.size()  << std::endl;  
       groupmap[e] =1; groupmap[te] =1;
@@ -659,7 +728,7 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
             eh = eh->next;
           } while ( e_starth!=eh) ; 
           // if the faces has 2 or more holes put a comma
-          if(i+1 !=f.first->holes.size() ) myfile << ",";
+          if(i+1 <f.first->holes.size() ) myfile << ",";
           i++;
         }
         //finish the holes or the face
@@ -688,9 +757,9 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
   for (int i = 1; i < umap.size()+1; i++ ) {
   auto  v = umap[i];
   if(i == umap.size()){
-    myfile   << *v ;
+    myfile << "["  << v->x << "," << v->y << "," <<v->z  << "]";
   }
-  else myfile   << *v <<",";
+  else myfile   <<  "[" <<v->x << "," <<v->y << "," <<v->z <<"]" <<",";
   }
   // close vertices
   myfile << "]";
@@ -702,7 +771,7 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
 
 
 int main(int argc, const char * argv[]) {
-  const char *file_in = "polygonal_hole.obj";
+  const char *file_in = "bk_soup.obj";
   const char *file_out = "bk.json";
   int count = 0;
   // Demonstrate how to use the DCEL to get you started (see function implementation below)
@@ -743,7 +812,7 @@ int main(int argc, const char * argv[]) {
     groupmap.insert({f.first,0});
   }
   // 4. merge adjacent triangles that are co-planar into larger polygonal faces.
-    mergeCoPlanarFaces( D,facemap, groupmap);
+  mergeCoPlanarFaces( D,facemap, groupmap);
   // 5. write the meshes with their faces to a valid CityJSON output file.
   exportCityJSON(D, file_out, hemap, umap, facemap);
   return 0;
@@ -760,7 +829,7 @@ void printDCEL(DCEL & D) {
     std::cout << "DCEL is valid\n";
   } else {
     std::cout << "DCEL is NOT valid ---> ";
-    std::cout << *element << &element <<"\n";
+    std::cout << *element << &element   <<"\n";
   }
 /*
   // iterate all elements of the DCEL and print the info for each element

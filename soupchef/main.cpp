@@ -429,16 +429,31 @@ void OrientationOfMap(DCEL & D, std::unordered_map< Face*, int> fmap, std::unord
 
 
 
-bool coplanar(Vertex* &v1, Vertex* &v2, Vertex* &v3, Vertex* &v4)
+bool coplanar(HalfEdge* e1, HalfEdge* e2)
 {
-  std::vector<double> V1 {v2->x - v1->x, v2->y - v1->y , v2->z -v1->z };
-  std::vector<double> V2 {v4->x - v1->x, v4->y - v1->y , v4->z -v1->z };
-  std::vector<double> V3 {v3->x - v1->x, v3->y - v1->y , v3->z -v1->z };
+
+  std::vector<double> V1 {e1->destination->x - e1->origin->x, e1->destination->y - e1->origin->y , e1->destination->z - e1->origin->z };
+  std::vector<double> V2 {e1->prev->origin->x - e1->origin->x, e1->prev->origin->y - e1->origin->y , e1->prev->origin->z - e1->origin->z };
+
+  std::vector<double> V3 {e2->destination->x - e2->next->destination->x, e2->destination->y - e2->next->destination->y , e2->destination->z - e2->next->destination->z };
+  std::vector<double> V4 {e2->prev->origin->x - e2->origin->x, e2->prev->origin->y - e2->origin->y , e2->prev->origin->z - e2->origin->z };
+
+
 
   std::vector<double> v  = cross(V1, V2);
+  std::vector<double> v1  = cross(V3, V4);
   double d =  dot(v, V3);
+  double d1 =  dot(v1, V2);
+  double d2 =  dot(v, V4);
+  double d3 =  dot(v1, V1);
 
-  if((d) < 0.01)
+
+
+  double m1= sqrt(pow(v[0],2)+pow(v[1],2)+pow(v[2],2));
+  double m2= sqrt(pow(v1[0],2)+pow(v1[1],2)+pow(v1[2],2));
+
+  double angle1 = acos(abs(dot(v1,v)) /(m1*m2));
+  if(  d < 0.01 && d1<0.01 && d2< 0.01 && d3<0.01)
   {
     return true;
   }
@@ -489,7 +504,7 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap, st
   //for each mesh of the model we merge faces
   for(  auto hedge: D.infiniteFace()->holes)
   {
-    if(facemap[hedge->incidentFace] ==1)
+    if(facemap[hedge->incidentFace] !=5)
     {
     //start with the mesh assigned in the list of holes of the infinite face
     HalfEdge* erg = hedge;
@@ -525,7 +540,7 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap, st
           HalfEdge* ef  = e;
           HalfEdge* e_start1 = ef;
           do {
-              if(!coplanar(ef->origin,ef->destination,tnn->origin,tnn->destination)) 
+              if(!coplanar(tnn,ef)) 
               { cop = false;
                 ef= e_start1;
               }
@@ -534,50 +549,15 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap, st
           if(cop ==false)  tnn= e_start;
           else tnn = tnn->next;
         } while ( e_start!=tnn) ;  
-
-      if(cop == true)
+      if(cop == true && (tp != n->twin &&   p != tn->twin ))
       {
-
-                     if(s.size()== 474 || n->destination   == e->origin )
-              {
-                    std::cout << "holes:::" <<  f->holes.size() << std::endl;
-                        const HalfEdge* e_start = e;
-                        do {
-            std::cout << "e:::" <<  s.size() << *e <<  *e->origin << *e->destination <<std::endl;
-            e = e->next;
-            } while ( e_start!=e) ; 
-                
-                        const HalfEdge* e_start1 = te;
-                        do {
-            std::cout << "twin:::" <<  s.size() << *te <<  *te->origin << *te->destination <<std::endl;
-            te = te->next;
-            } while ( e_start1!=te) ; 
-            for(auto f1 : f->holes){
-                                    const HalfEdge* e_start2 = f1;
-                        do {
-            std::cout << "holes e:::" <<  s.size() << *f1 <<  *f1->origin << *f1->destination <<std::endl;
-            f1 = f1->next;
-            } while ( e_start2!=f1) ;
-               } 
-
-                           for(auto f2 : tf->holes){
-                                    const HalfEdge* e_start3 = f2;
-                        do {
-            std::cout << "holes twin:::" <<  s.size() << *f2 <<  *f2->origin << *f2->destination <<  *e_start3  <<std::endl;
-            f2 = f2->next;
-            } while ( e_start3!=f2) ;
-               } 
-            std::cout << "exterior edge f1:::" <<  s.size() << *f->exteriorEdge <<  *f->exteriorEdge->origin << *f->exteriorEdge->destination <<std::endl;
-            std::cout << "exterior edge f12::" <<  s.size() << *tf->exteriorEdge <<  *tf->exteriorEdge->origin << *tf->exteriorEdge->destination <<std::endl;
-            }  
-
-        //delete the edge and the twin
-        e -> eliminate();
-        te -> eliminate();
         n->prev = tp;
         p->next = tn;
         tn->prev = p;
         tp->next = n;
+        //delete the edge and the twin
+        e -> eliminate();
+        te -> eliminate();
         int hole_c = 0;
         //if the faces of the twin is the same -> we have a hole!
         std::cout << "coplanar" <<  s.size()  << std::endl;
@@ -628,7 +608,13 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap, st
             he->incidentFace = f;
             he = he->next;
             } while ( e_start!=he) ; 
-          }
+          
+                      for(auto &re: groupmap   )
+        {
+          if( re.first->twin  == re.first->next) std::cout << "Wrong Twin" << s.size() <<  std::endl;
+        }
+
+      }
 
 
         printDCEL(D);
@@ -728,7 +714,7 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
             eh = eh->next;
           } while ( e_starth!=eh) ; 
           // if the faces has 2 or more holes put a comma
-          if(i+1 <f.first->holes.size() ) myfile << ",";
+          //if(i+1 <f.first->holes.size() ) myfile << ",";
           i++;
         }
         //finish the holes or the face

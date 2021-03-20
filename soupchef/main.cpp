@@ -429,16 +429,36 @@ void OrientationOfMap(DCEL & D, std::unordered_map< Face*, int> fmap, std::unord
 
 
 
-bool coplanar(Vertex* &v1, Vertex* &v2, Vertex* &v3, Vertex* &v4)
+bool coplanar(HalfEdge* e1, HalfEdge* e2)
 {
-  std::vector<double> V1 {v2->x - v1->x, v2->y - v1->y , v2->z -v1->z };
-  std::vector<double> V2 {v4->x - v1->x, v4->y - v1->y , v4->z -v1->z };
-  std::vector<double> V3 {v3->x - v1->x, v3->y - v1->y , v3->z -v1->z };
+
+  std::vector<double> V1 {e1->destination->x - e1->next->destination->x, e1->destination->y - e1->next->destination->y , e1->destination->z - e1->next->destination->z };
+  std::vector<double> V2 {e1->prev->origin->x - e1->origin->x, e1->prev->origin->y - e1->origin->y , e1->prev->origin->z - e1->origin->z };
+
+  std::vector<double> V3 {e2->destination->x - e2->next->destination->x, e2->destination->y - e2->next->destination->y , e2->destination->z - e2->next->destination->z };
+  std::vector<double> V4 {e2->prev->origin->x - e2->origin->x, e2->prev->origin->y - e2->origin->y , e2->prev->origin->z - e2->origin->z };
+
+
 
   std::vector<double> v  = cross(V1, V2);
+  std::vector<double> v1  = cross(V3, V4);
   double d =  dot(v, V3);
+  double d1 =  dot(v1, V2);
+  double d2 =  dot(v, V4);
+  double d3 =  dot(v1, V1);
 
-  if((d) < 0.01)
+  double D = -v[0]*e1->prev->origin->x  -v[1]*e1->prev->origin->y -v[2]*e1->prev->origin->z;
+
+  double m1= sqrt(pow(v[0],2)+pow(v[1],2)+pow(v[2],2));
+  double m2= sqrt(pow(v1[0],2)+pow(v1[1],2)+pow(v1[2],2));
+
+  double angle1 = acos(abs(dot(v1,v)) /(m1*m2));
+
+  double w = v[0]*e2->prev->origin->x  +v[1]*e2->prev->origin->y +v[2]*e2->prev->origin->z;
+
+  double dist = abs(w+D) / m1; 
+
+  if(  d < 0.01 && d1< 0.01 && d2 <0.01 && d3< 0.01)
   {
     return true;
   }
@@ -482,67 +502,16 @@ bool is_hole(HalfEdge* e)
   return false;
 
 }
-void traverseEdge(DCEL & D, std::unordered_map< HalfEdge*, int > &hedmap, 
-                              std::unordered_map< int, HalfEdge*> &dehmap,
-                          HalfEdge* e, int i, HalfEdge* startedge, 
-                          std::unordered_map< int , int > &typemap){ 
-  hedmap[e] == i;
-  dehmap[i] == e;
-  typemap[i] == 0;
-  //type 0 = unclassified, 1 = exterior, 2 = hole
-  if (e != startedge){
-    traverseEdge(D, hedmap, dehmap, e->next, i, startedge, typemap);
-  }
-}
-
-void getBoundaries(DCEL & D, std::unordered_map< HalfEdge*, int  > &hedmap, 
-                    std::unordered_map< int, HalfEdge*> &dehmap,
-                 std::unordered_map< int , int > &typemap){
-//for all half edges
-int i = 0;
-  for ( const auto & e : D.halfEdges() ) {
-  int seen = 0;
-  for (int i; i < hedmap.size(); i++){
-      if (dehmap[i]->origin->x == e->origin->x &&
-          dehmap[i]->origin->y == e->origin->y &&
-          dehmap[i]->origin->z == e->origin->z &&
-          dehmap[i]->destination->x == e->destination->x &&
-          dehmap[i]->destination->y == e->destination->y &&
-          dehmap[i]->destination->z == e->destination->z 
-        ){
-          seen = 1;
-      }
-  }
-
-  if (seen == 0){
-    i = i + 1;
-    traverseEdge(D, hedmap, dehmap, e.get(), i, e.get(), typemap);
-}
-for (int i = 1; i <= typemap.size(); i++ ){
-  for (int j = 1; j <= typemap.size(); j++ ){
-  if (dehmap[i]->incidentFace == dehmap[j]->incidentFace && i!=j){
-    if(detect_hole(dehmap[i], dehmap[j]) ){
-      typemap[i]== 1;
-      typemap[j]== 2;
-    }
-    }
-  }
-}
-}
-}
 
 
-
-
-
-void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap, 
-                                  std::unordered_map< HalfEdge*, int> &groupmap) {
+void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap, std::unordered_map< HalfEdge*, int> &groupmap) {
   // to do
   //for each mesh of the model we merge faces
   for(  auto hedge: D.infiniteFace()->holes)
   {
-    if(facemap[hedge->incidentFace] ==1)
+    if(facemap[hedge->incidentFace] >=0)
     {
+    std::cout << "Merging mesh:" <<  facemap[hedge->incidentFace]  << std::endl;
     //start with the mesh assigned in the list of holes of the infinite face
     HalfEdge* erg = hedge;
     // start a stack of  edges were each will be looked for coplanar faces
@@ -577,7 +546,7 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap,
           HalfEdge* ef  = e;
           HalfEdge* e_start1 = ef;
           do {
-              if(!coplanar(ef->origin,ef->destination,tnn->origin,tnn->destination)) 
+              if(!coplanar(tnn,ef)) 
               { cop = false;
                 ef= e_start1;
               }
@@ -586,67 +555,32 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap,
           if(cop ==false)  tnn= e_start;
           else tnn = tnn->next;
         } while ( e_start!=tnn) ;  
-
-      if(cop == true)
+      if(cop == true && (tp != n->twin &&   p != tn->twin ))
       {
-
-                     if(s.size()== 474 || n->destination   == e->origin )
-              {
-                    std::cout << "holes:::" <<  f->holes.size() << std::endl;
-                        const HalfEdge* e_start = e;
-                        do {
-            std::cout << "e:::" <<  s.size() << *e <<  *e->origin << *e->destination <<std::endl;
-            e = e->next;
-            } while ( e_start!=e) ; 
-                
-                        const HalfEdge* e_start1 = te;
-                        do {
-            std::cout << "twin:::" <<  s.size() << *te <<  *te->origin << *te->destination <<std::endl;
-            te = te->next;
-            } while ( e_start1!=te) ; 
-            for(auto f1 : f->holes){
-                                    const HalfEdge* e_start2 = f1;
-                        do {
-            std::cout << "holes e:::" <<  s.size() << *f1 <<  *f1->origin << *f1->destination <<std::endl;
-            f1 = f1->next;
-            } while ( e_start2!=f1) ;
-               } 
-
-                           for(auto f2 : tf->holes){
-                                    const HalfEdge* e_start3 = f2;
-                        do {
-            std::cout << "holes twin:::" <<  s.size() << *f2 <<  *f2->origin << *f2->destination <<  *e_start3  <<std::endl;
-            f2 = f2->next;
-            } while ( e_start3!=f2) ;
-               } 
-            std::cout << "exterior edge f1:::" <<  s.size() << *f->exteriorEdge <<  *f->exteriorEdge->origin << *f->exteriorEdge->destination <<std::endl;
-            std::cout << "exterior edge f12::" <<  s.size() << *tf->exteriorEdge <<  *tf->exteriorEdge->origin << *tf->exteriorEdge->destination <<std::endl;
-            }  
-
-        //delete the edge and the twin
-        e -> eliminate();
-        te -> eliminate();
         n->prev = tp;
         p->next = tn;
         tn->prev = p;
         tp->next = n;
+        //delete the edge and the twin
+        e -> eliminate();
+        te -> eliminate();
         int hole_c = 0;
         //if the faces of the twin is the same -> we have a hole!
-        std::cout << "coplanar" <<  s.size()  << std::endl;
+        //std::cout << "coplanar" <<  s.size()  << std::endl;
         if(tf == f)
         {
           // to check which edges belong to the hole
-          std::cout << "hole" <<  s.size()  << std::endl;
+          //std::cout << "hole" <<  s.size()  << std::endl;
           if(detect_hole(n,f->exteriorEdge))
             {
               hole_c = 1;
-              std::cout << "n mayor p" <<  s.size()  << std::endl;
+             // std::cout << "n mayor p" <<  s.size()  << std::endl;
               f->holes.push_back(tn);           
             }
           else 
             {
               hole_c = 2;
-              std::cout << "p mayor n" <<  s.size()  << std::endl;
+              //std::cout << "p mayor n" <<  s.size()  << std::endl;
               f->holes.push_back(n);
             }
         }
@@ -680,10 +614,9 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap,
             he->incidentFace = f;
             he = he->next;
             } while ( e_start!=he) ; 
-          }
 
+      }
 
-        printDCEL(D);
       // we checked the hedge e, now check for other faces 
       //std::cout << "nin" <<  s.size()  << std::endl;  
       groupmap[e] =1; groupmap[te] =1;
@@ -692,7 +625,6 @@ void mergeCoPlanarFaces(DCEL & D,   std::unordered_map< Face*, int> &facemap,
       if(groupmap[tn] == 0) s.push(tn->twin);
       if(groupmap[tp] == 0) s.push(tp->twin);
       D.cleanup();
-      printDCEL(D);
     }
     }
     D.cleanup();
@@ -762,7 +694,7 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
         int i = 0;
         for (auto eh: f.first->holes)
         {
-          std::cout << "HOLESSSS" << std::endl;
+          std::cout << "Hole writing" << std::endl;
           //if the face has a hole, finish the exterior and start the interior
           myfile << "],[";
           const HalfEdge* e_starth = eh;
@@ -780,7 +712,7 @@ void exportCityJSON(DCEL & D, const char *file_out ,std::unordered_map< HalfEdge
             eh = eh->next;
           } while ( e_starth!=eh) ; 
           // if the faces has 2 or more holes put a comma
-          if(i+1 <f.first->holes.size() ) myfile << ",";
+          //if(i+1 <f.first->holes.size() ) myfile << ",";
           i++;
         }
         //finish the holes or the face
@@ -857,20 +789,7 @@ int main(int argc, const char * argv[]) {
   }
    OrientationOfMap(D, fmap, facemap);
     std::unordered_map< HalfEdge*, int> groupmap;
-   
-
-  std::unordered_map< HalfEdge*, int> hedmap;
-  for( auto & f : hemap)
-  {
-    hedmap.insert({f.first,0});
-  }
-
-  std::unordered_map< int, HalfEdge* > dehmap;
-
-  std::unordered_map< int, int> typemap;
-
-
-  printDCEL(D);  
+ 
   for( auto & f : groupmap)
   {
     groupmap.insert({f.first,0});
@@ -883,176 +802,3 @@ int main(int argc, const char * argv[]) {
 }
 
 
-void printDCEL(DCEL & D) {
-
-  // Quick check if there is an invalid element
-  auto element = D.findInValid();
-  if ( element == nullptr ) {
-    // Beware that a 'valid' DCEL here only means there are no dangling links and no elimated elements.
-    // There could still be problems like links that point to the wrong element.
-    std::cout << "DCEL is valid\n";
-  } else {
-    std::cout << "DCEL is NOT valid ---> ";
-    std::cout << *element << &element   <<"\n";
-  }
-/*
-  // iterate all elements of the DCEL and print the info for each element
-  const auto & halfEdges = D.halfEdges()& vertices = D.vertices();
-  const auto & halfEdges = D.halfEdges();
-  const auto & faces = D.faces();
-  std::cout << "DCEL has:\n";
-  std::cout << " " << vertices.size() << " vertices:\n";
-  for ( const auto & v : vertices ) {
-    std::cout << "  * " << *v << "\n";
-  }
-  std::cout << " " << halfEdges.size() << " half-edges:\n";
-  for ( const auto & e : halfEdges ) {
-    std::cout << "  * " << *e << "\n";
-  }
-  std::cout << " " << faces.size() << " faces:\n";
-  for ( const auto & f : faces ) {
-    std::cout << "  * " << *f << "\n";
-  }
-*/
-}
-
-
-void DemoDCEL() {
-
-  std::cout << "/// STEP 1 Creating empty DCEL...\n";
-  DCEL D;
-  printDCEL(D);
-
-  /*
-  v2 (0,1,0)
-   o
-   |\
-   | \
-   |  \
-   o---o v1 (1,0,0)
-  v0
-  (0,0,0)
-  We will construct the DCEL of a single triangle 
-  in the plane z=0 (as shown above).
-  This will require:
-    3 vertices
-    6 halfedges (2 for each edge)
-    1 face
-  */
-  std::cout << "\n/// STEP 2 Adding triangle vertices...\n";
-  Vertex* v0 = D.createVertex(0,0,0);
-  Vertex* v1 = D.createVertex(1,0,0);
-  Vertex* v2 = D.createVertex(0,1,0);
-  printDCEL(D);
-
-  std::cout << "\n/// STEP 3 Adding triangle half-edges...\n";
-  HalfEdge* e0 = D.createHalfEdge();
-  HalfEdge* e1 = D.createHalfEdge();
-  HalfEdge* e2 = D.createHalfEdge();
-  HalfEdge* e3 = D.createHalfEdge();
-  HalfEdge* e4 = D.createHalfEdge();
-  HalfEdge* e5 = D.createHalfEdge();
-  printDCEL(D);
-
-  std::cout << "\n/// STEP 4 Adding triangle face...\n";
-  Face* f0 = D.createFace();
-  printDCEL(D);
-
-  std::cout << "\n/// STEP 5 Setting links...\n";
-  e0->origin = v0;
-  e0->destination = v1;
-  e0->twin = e3;
-  e0->next = e1;
-  e0->prev = e2;
-  e0->incidentFace = f0;
-
-  e3->origin = v1;
-  e3->destination = v0;
-  e3->twin = e0;
-  e3->next = e5;
-  e3->prev = e4;
-
-  /* 
-  If a half-edge is incident to 'open space' (ie not an actual face with an exterior boundary), 
-  we use the infiniteFace which is predifined in the DCEL class
-  */
-  e3->incidentFace = D.infiniteFace();
-
-  e1->origin = v1;
-  e1->destination = v2;
-  e1->twin = e4;
-  e1->next = e2;
-  e1->prev = e0;
-  e1->incidentFace = f0;
-
-  e4->origin = v2;
-  e4->destination = v1;
-  e4->twin = e1;
-  e4->next = e3;
-  e4->prev = e5;
-  e4->incidentFace = D.infiniteFace();
-
-  e2->origin = v2;
-  e2->destination = v0;
-  e2->twin = e5;
-  e2->next = e0;
-  e2->prev = e1;
-  e2->incidentFace = f0;
-
-  e5->origin = v0;
-  e5->destination = v2;
-  e5->twin = e2;
-  e5->next = e4;
-  e5->prev = e3;
-  e5->incidentFace = D.infiniteFace();
-
-  f0->exteriorEdge = e0;
-  printDCEL(D);
-
-
-  std::cout << "\n/// STEP 6 Traversing exterior vertices of f0...\n";
-  /* 
-  if all is well in the DCEL, following a chain of half-edges (ie keep going to e.next)
-  should lead us back the the half-edge where we started.
-  */
-  HalfEdge* e = f0->exteriorEdge;
-  const HalfEdge* e_start = e;
-  do {
-    std::cout << " -> " << *e->origin << "\n";
-    e = e->next;
-  } while ( e_start!=e) ; // we stop the loop when e_start==e (ie. we are back where we started)
-  
-  
-  std::cout << "\n/// STEP 7 eliminating v0...\n";
-  v0->eliminate();
-  printDCEL(D);
-  
-  /* 
-  We just eliminated v0. At the same time we know there are elements that still 
-  pointers to v0 (ie the edges e0, e2, e3, e5). This means we can NOT call D.cleanup()!
-  If you do this anyways, the program may crash. 
-  
-  Eg. if you uncomment the following there could be a crash/stall of the program.
-  */
-  // D.cleanup(); // this will remove v0 from memory (because we just eliminated v0 and the cleanup() function simply removes all the eliminated elements)
-  // std::cout << *v0 << "\n"; // we try to access that memory, but v0 is gone -> undefined behaviour 
-  // std::cout << *e0->origin << "\n"; // this equivalent to the previous line (both point to the same memory address)
-
-
-  std::cout << "\n/// STEP 8 eliminating all the remaining DCEL elements\n";
-  for ( const auto & v : D.vertices() ) {
-    v->eliminate();
-  }
-  for ( const auto & e : D.halfEdges() ) {
-    e->eliminate();
-  }
-  for ( const auto & f : D.faces() ) {
-    f->eliminate();
-  }
-  printDCEL(D);
-
-  std::cout << "\n/// STEP 9 cleaning up the DCEL\n";
-  D.cleanup();
-  printDCEL(D);
-
-}
